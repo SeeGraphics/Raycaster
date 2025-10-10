@@ -1,0 +1,15 @@
+# Comipled files
+*.o
+
+# directory
+build/
+
+# compile stuff
+*.cache
+compile_commands.json
+
+# to-do stuff
+*.txt
+
+# executable
+raycast

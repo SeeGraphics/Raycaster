@@ -1,10 +1,10 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c11 -Iinclude `sdl2-config --cflags`
-LDFLAGS = `sdl2-config --libs`
+LDFLAGS = `sdl2-config --libs` -lSDL2_ttf
 SRC_DIR = src
 BUILD_DIR = build
 
-SOURCES = main.c map.c graphics.c player.c camera.c raycast.c
+SOURCES = main.c map.c graphics.c player.c camera.c raycast.c font.c
 OBJECTS = $(SOURCES:%.c=$(BUILD_DIR)/%.o)
 TARGET = $(BUILD_DIR)/raycast
 

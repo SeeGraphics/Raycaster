@@ -8,6 +8,7 @@
 #define RGB_Green ((SDL_Color){0, 255, 0, 255})
 #define RGB_Blue ((SDL_Color){0, 0, 255, 255})
 #define RGB_White ((SDL_Color){255, 255, 255, 255})
+#define RGB_Black ((SDL_Color){0, 0, 0, 255})
 #define RGB_Yellow ((SDL_Color){255, 255, 0, 255})
 #define RGB_Ceiling ((SDL_Color){50, 50, 50, 255})
 #define RGB_Floor ((SDL_Color){100, 100, 100, 255})

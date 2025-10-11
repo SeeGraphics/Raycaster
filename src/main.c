@@ -1,3 +1,4 @@
+#include "font.h"
 #include "graphics.h"
 #include "map.h"
 #include "player.h"
@@ -12,7 +13,7 @@
 
 int main() {
   // Create game objects
-  Player player = {22, 22, -1, 0, 0, 0.66, 5.0, 3.0, 0.002};
+  Player player = {22, 22, -1, 0, 0, 0.88, 5.0, 3.0, 0.002};
   Game game = {
       NULL, NULL, TITLE, WINDOW_WIDTH, WINDOW_HEIGHT,
   };
@@ -23,6 +24,19 @@ int main() {
     return SDL_cleanup(&game, EXIT_FAILURE);
   }
 
+  if (TTF_Init() == -1) {
+    printf("TTF_Init failed: %s\n", TTF_GetError());
+    return EXIT_FAILURE;
+  }
+  Font font = {
+      TTF_OpenFont("assets/font/Doom.ttf", 120),
+      TTF_OpenFont("assets/font/Doom.ttf", 60),
+      TTF_OpenFont("assets/font/Doom.ttf", 90),
+  };
+  if (!font.debug || !font.ui || !font.title) {
+    fprintf(stderr, "Failed to load font: %s\n", TTF_GetError());
+    return EXIT_FAILURE;
+  }
   SDL_SetRelativeMouseMode(SDL_TRUE);
 
   while (true) {
@@ -96,9 +110,17 @@ int main() {
 
     // draw game
     perform_raycasting(&game, &player);
+
+    // draw HUD info
+    renderText(game.renderer, font.title, "DOOM",
+               (int)game.window_width / 2 - 40, 30, RGB_White);
+
     SDL_RenderPresent(game.renderer);
-    SDL_Delay(16);
+    SDL_Delay(16); // ~60 fps
   }
+  TTF_CloseFont(font.title);
+  TTF_CloseFont(font.ui);
+  TTF_CloseFont(font.debug);
 
   return SDL_cleanup(&game, EXIT_SUCCESS);
 }

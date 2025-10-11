@@ -1,5 +1,4 @@
 #include "player.h"
-#include "SDL.h"
 #include "map.h"
 #include <math.h>
 

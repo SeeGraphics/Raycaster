@@ -10,9 +10,10 @@ int SDL_initialize(Game *game) {
   }
   printf("SDL loaded...\n");
 
-  game->window = SDL_CreateWindow(game->title, SDL_WINDOWPOS_CENTERED,
-                                  SDL_WINDOWPOS_CENTERED, game->window_width,
-                                  game->window_height, SDL_WINDOW_RESIZABLE);
+  game->window = SDL_CreateWindow(
+      game->title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+      game->window_width, game->window_height,
+      SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALWAYS_ON_TOP);
   if (!game->window) {
     fprintf(stderr, "SDL failed to create window: %s\n", SDL_GetError());
     SDL_Quit();

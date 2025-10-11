@@ -1,25 +1,28 @@
 #ifndef PLAYER_H
 #define PLAYER_H
 
+#include "SDL.h"
 #include "map.h"
 #include <stdbool.h>
 
 typedef struct {
-  double posX;
-  double posY;
-  double dirX;
-  double dirY;
-  double planeX;
-  double planeY;
+  double posX, posY;
+  double dirX, dirY;
+  double planeX, planeY;
   double moveSpeed;
-  double rotSpeed;
+  double rotSpeed;    // arrow keys sens
+  double sensitivity; // mouse sens
 } Player;
 
-void player_move_forward(Player *player, double deltaTime,
-                         int worldMap[MAP_WIDTH][MAP_HEIGHT]);
-void player_move_backward(Player *player, double deltaTime,
-                          int worldMap[MAP_WIDTH][MAP_HEIGHT]);
-void player_rotate_left(Player *player, double deltaTime);
-void player_rotate_right(Player *player, double deltaTime);
+// movement
+void player_move(Player *player, double deltaTime,
+                 int worldMap[MAP_HEIGHT][MAP_WIDTH], int direction);
+void player_strafe(Player *player, double deltaTime,
+                   int worldMap[MAP_HEIGHT][MAP_WIDTH], int direction);
+
+// rotation
+void player_rotate(Player *player, double rotationAmount);
+double mouse_rotationAmount(double sensitivity, Sint16 xrel);
+double key_rotationAmount(double rotSpeed, double deltaTime, int direction);
 
 #endif

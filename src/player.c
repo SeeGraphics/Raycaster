@@ -1,54 +1,57 @@
 #include "player.h"
+#include "SDL.h"
+#include "map.h"
 #include <math.h>
 
-void player_move_forward(Player *player, double deltaTime,
-                         int worldMap[24][24]) {
-  double moveStep = player->moveSpeed * deltaTime;
-  int mapX = (int)(player->posX + player->dirX * moveStep);
-  int mapY = (int)(player->posY);
-  if (!worldMap[mapX][mapY])
-    player->posX += player->dirX * moveStep;
+void player_move(Player *player, double deltaTime,
+                 int worldMap[MAP_HEIGHT][MAP_WIDTH], int direction) {
+  double moveStep = player->moveSpeed * deltaTime * direction; // 1 or -1
 
-  mapX = (int)(player->posX);
-  mapY = (int)(player->posY + player->dirY * moveStep);
-  if (!worldMap[mapX][mapY])
-    player->posY += player->dirY * moveStep;
+  double newX = player->posX + player->dirX * moveStep;
+  double newY = player->posY + player->dirY * moveStep;
+
+  // collision check
+  if (!worldMap[(int)newX][(int)player->posY])
+    player->posX = newX;
+  if (!worldMap[(int)player->posX][(int)newY])
+    player->posY = newY;
 }
 
-void player_move_backward(Player *player, double deltaTime,
-                          int worldMap[24][24]) {
-  double moveStep = player->moveSpeed * deltaTime;
-  int mapX = (int)(player->posX - player->dirX * moveStep);
-  int mapY = (int)(player->posY);
-  if (!worldMap[mapX][mapY])
-    player->posX -= player->dirX * moveStep;
+void player_strafe(Player *player, double deltaTime,
+                   int worldMap[MAP_HEIGHT][MAP_WIDTH], int direction) {
+  double moveStep = player->moveSpeed * deltaTime * direction;
 
-  mapX = (int)(player->posX);
-  mapY = (int)(player->posY - player->dirY * moveStep);
-  if (!worldMap[mapX][mapY])
-    player->posY -= player->dirY * moveStep;
+  double newX = player->posX + player->planeX * moveStep;
+  double newY = player->posY + player->planeY * moveStep;
+
+  // collision check
+  if (!worldMap[(int)newX][(int)player->posY])
+    player->posX = newX;
+  if (!worldMap[(int)player->posX][(int)newY])
+    player->posY = newY;
 }
 
-void player_rotate_left(Player *player, double deltaTime) {
-  double rotStep = player->rotSpeed * deltaTime;
+void player_rotate(Player *player, double rotationAmount) {
+  double rotStep = rotationAmount;
+  double cosRot = cos(rotStep);
+  double sinRot = sin(rotStep);
+
   double oldDirX = player->dirX;
-  player->dirX = player->dirX * cos(rotStep) - player->dirY * sin(rotStep);
-  player->dirY = oldDirX * sin(rotStep) + player->dirY * cos(rotStep);
+  player->dirX = player->dirX * cosRot - player->dirY * sinRot;
+  player->dirY = oldDirX * sinRot + player->dirY * cosRot;
 
   double oldPlaneX = player->planeX;
-  player->planeX =
-      player->planeX * cos(rotStep) - player->planeY * sin(rotStep);
-  player->planeY = oldPlaneX * sin(rotStep) + player->planeY * cos(rotStep);
+  player->planeX = player->planeX * cosRot - player->planeY * sinRot;
+  player->planeY = oldPlaneX * sinRot + player->planeY * cosRot;
 }
 
-void player_rotate_right(Player *player, double deltaTime) {
-  double rotStep = -player->rotSpeed * deltaTime;
-  double oldDirX = player->dirX;
-  player->dirX = player->dirX * cos(rotStep) - player->dirY * sin(rotStep);
-  player->dirY = oldDirX * sin(rotStep) + player->dirY * cos(rotStep);
+// get rotation Amount for player_rotate
+double key_rotationAmount(double rotSpeed, double deltaTime, int direction) {
+  double rotationAmount = rotSpeed * deltaTime * direction;
+  return rotationAmount;
+}
 
-  double oldPlaneX = player->planeX;
-  player->planeX =
-      player->planeX * cos(rotStep) - player->planeY * sin(rotStep);
-  player->planeY = oldPlaneX * sin(rotStep) + player->planeY * cos(rotStep);
+double mouse_rotationAmount(double sensitivity, Sint16 xrel) {
+  double rotationAmount = xrel * sensitivity;
+  return rotationAmount;
 }

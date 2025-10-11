@@ -23,6 +23,7 @@ typedef struct {
 int SDL_cleanup(Game *game, int exit_status);
 int SDL_initialize(Game *game);
 
+// this draws the walls
 static inline void verLine(SDL_Renderer *renderer, int x, int y1, int y2,
                            SDL_Color color) {
   SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);

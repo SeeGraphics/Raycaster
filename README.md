@@ -1,1 +1,1 @@
-Wolfenstein-style software Renderer using Raycasting, written in C with SDL2.
+Wolfenstein3D-style software Renderer using Raycasting, written in C with SDL2.

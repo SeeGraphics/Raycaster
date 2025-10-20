@@ -38,14 +38,14 @@ void loadImage(uint32_t *texture, int width, int height, const char *filename) {
 
 void loadTextures(TextureManager *tm, int texWidth, int texHeight) {
   const char *texture_files[NUM_TEXTURES] = {
-      "assets/textures/walls/eagle.png",       // 1
-      "assets/textures/walls/redbrick.png",    // 2
-      "assets/textures/walls/purplestone.png", // 3
-      "assets/textures/walls/greystone.png",   // 4
-      "assets/textures/walls/bluestone.png",   // 5
-      "assets/textures/walls/mossy.png",       // 6
-      "assets/textures/walls/wood.png",        // 7
-      "assets/textures/walls/colorstone.png"}; // 8
+      "assets/textures/sides/eagle.png",       // 1
+      "assets/textures/sides/redbrick.png",    // 2
+      "assets/textures/sides/purplestone.png", // 3
+      "assets/textures/sides/greystone.png",   // 4
+      "assets/textures/sides/bluestone.png",   // 5
+      "assets/textures/sides/mossy.png",       // 6
+      "assets/textures/sides/wood.png",        // 7
+      "assets/textures/sides/colorstone.png"}; // 8
 
   for (int i = 0; i < NUM_TEXTURES; i++) {
     loadImage(tm->textures[i], texWidth, texHeight, texture_files[i]);

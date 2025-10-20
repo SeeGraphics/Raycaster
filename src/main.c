@@ -110,6 +110,20 @@ int main() {
             SDL_cleanup(&game, EXIT_FAILURE);
             return 1;
           }
+
+          // recreate texture
+          if (game.screen_texture) {
+            SDL_DestroyTexture(game.screen_texture);
+          }
+          game.screen_texture =
+              SDL_CreateTexture(game.renderer, SDL_PIXELFORMAT_ARGB8888,
+                                SDL_TEXTUREACCESS_STREAMING, game.window_width,
+                                game.window_height);
+          if (!game.screen_texture) {
+            fprintf(stderr, "Failed to recreate texture: %s\n", SDL_GetError());
+            SDL_cleanup(&game, EXIT_FAILURE);
+            return 1;
+          }
         }
       }
 
@@ -150,6 +164,7 @@ int main() {
     }
 
     // draw game
+    perform_floorcasting(&game, &textureManager, &player); // floor and roof
     perform_raycasting(&game, &textureManager, &player);
     drawBuffer(&game);
 
@@ -159,7 +174,7 @@ int main() {
     renderText(game.renderer, font.debug, fpsText, 10, 10, RGB_Yellow);
 
     SDL_RenderPresent(game.renderer);
-    SDL_Delay(4); // ~120fps
+    SDL_Delay(2); // ~140 fps
   }
 
   // cleanup

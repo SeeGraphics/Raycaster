@@ -3,7 +3,8 @@
 
 #include "graphics.h"
 #include "player.h"
+#include "texture.h"
 
-void perform_raycasting(Game *game, Player *player);
+void perform_raycasting(Game *game, TextureManager *tm, Player *player);
 
 #endif

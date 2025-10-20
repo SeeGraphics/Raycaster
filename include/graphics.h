@@ -16,19 +16,22 @@
 typedef struct {
   SDL_Window *window;
   SDL_Renderer *renderer;
+  SDL_Texture *screen_texture;
   char *title;
   int window_width;
   int window_height;
+  uint32_t *buffer;
 } Game;
 
 int SDL_cleanup(Game *game, int exit_status);
 int SDL_initialize(Game *game);
+void drawBuffer(Game *game);
 
-// this draws the walls
-static inline void verLine(SDL_Renderer *renderer, int x, int y1, int y2,
-                           SDL_Color color) {
-  SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-  SDL_RenderDrawLine(renderer, x, y1, x, y2);
-}
+// // this draws the walls for untextured raycaster
+// static inline void verLine(SDL_Renderer *renderer, int x, int y1, int y2,
+//                            SDL_Color color) {
+//   SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
+//   SDL_RenderDrawLine(renderer, x, y1, x, y2);
+// }
 
 #endif

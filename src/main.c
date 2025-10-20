@@ -3,6 +3,7 @@
 #include "map.h"
 #include "player.h"
 #include "raycast.h"
+#include "texture.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,17 +14,40 @@
 
 int main() {
   // Create game objects
+  Game game = {NULL, NULL, NULL, TITLE, WINDOW_WIDTH, WINDOW_HEIGHT, NULL};
   Player player = {22, 22, -1, 0, 0, 0.88, 5.0, 3.0, 0.002};
-  Game game = {
-      NULL, NULL, TITLE, WINDOW_WIDTH, WINDOW_HEIGHT,
-  };
+  TextureManager textureManager = {NULL};
 
+  // delta time variables
   double time = 0, oldTime = 0;
 
+  // Initialization
   if (SDL_initialize(&game)) {
     return SDL_cleanup(&game, EXIT_FAILURE);
   }
 
+  // allocate screen buffer
+  game.buffer =
+      malloc(game.window_width * game.window_height * sizeof(uint32_t));
+  if (!game.buffer) {
+    fprintf(stderr, "Couldn't allocate buffer");
+    SDL_cleanup(&game, EXIT_FAILURE);
+    return 1;
+  }
+
+  // allocate textures
+  for (int i = 0; i < NUM_TEXTURES; i++) {
+    textureManager.textures[i] =
+        malloc(TEXT_WIDTH * TEXT_HEIGHT * sizeof(uint32_t));
+    if (!textureManager.textures[i]) {
+      fprintf(stderr, "Couldn't allocate texture %d", i);
+      free(textureManager.textures[i]);
+      return 1;
+    }
+  }
+  loadTextures(&textureManager, TEXT_WIDTH, TEXT_HEIGHT);
+
+  // Font loading
   if (TTF_Init() == -1) {
     printf("TTF_Init failed: %s\n", TTF_GetError());
     return EXIT_FAILURE;
@@ -37,14 +61,18 @@ int main() {
     fprintf(stderr, "Failed to load font: %s\n", TTF_GetError());
     return EXIT_FAILURE;
   }
+
+  // FPS Mouse
   SDL_SetRelativeMouseMode(SDL_TRUE);
 
   while (true) {
+
     // get delta time
     oldTime = time;
     time = SDL_GetTicks();
     double deltaTime = (time - oldTime) / 1000.0;
 
+    // Quit
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_QUIT) {
@@ -64,21 +92,37 @@ int main() {
         }
       }
 
+      // resizing window
       if (event.type == SDL_WINDOWEVENT) {
         if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
           game.window_width = event.window.data1;
           game.window_height = event.window.data2;
+
+          // free & reallocate buffer for textures
+          free(game.buffer);
+          game.buffer =
+              malloc(game.window_width * game.window_height * sizeof(uint32_t));
+          if (!game.buffer) {
+            fprintf(stderr, "Couldn't allocate buffer");
+            SDL_cleanup(&game, EXIT_FAILURE);
+            return 1;
+          }
         }
       }
 
+      // mouse control
       if (event.type == SDL_MOUSEMOTION) {
         player_rotate(&player, mouse_rotationAmount(player.sensitivity,
                                                     -event.motion.xrel));
       }
     }
 
+    // Input
     const Uint8 *state = SDL_GetKeyboardState(NULL);
-
+    if (state[SDL_SCANCODE_Q] && SDL_GetRelativeMouseMode())
+      SDL_SetRelativeMouseMode(SDL_FALSE);
+    else if (state[SDL_SCANCODE_Q] && !SDL_GetRelativeMouseMode())
+      SDL_SetRelativeMouseMode(SDL_TRUE);
     if (state[SDL_SCANCODE_UP] || state[SDL_SCANCODE_W])
       player_move(&player, deltaTime, worldMap, 1);
     if (state[SDL_SCANCODE_DOWN] || state[SDL_SCANCODE_S])
@@ -95,21 +139,16 @@ int main() {
     if (state[SDL_SCANCODE_D])
       player_strafe(&player, deltaTime, worldMap, 1);
 
-    // Set ceiling color and clear screen
-    SDL_SetRenderDrawColor(game.renderer, RGB_Ceiling.r, RGB_Ceiling.g,
-                           RGB_Ceiling.b, RGB_Ceiling.a);
-    SDL_RenderClear(game.renderer);
-
-    // Draw floor
-    SDL_SetRenderDrawColor(game.renderer, RGB_Floor.r, RGB_Floor.g, RGB_Floor.b,
-                           RGB_Floor.a);
-
-    SDL_Rect floor = {0, game.window_height / 2, game.window_width,
-                      game.window_height / 2};
-    SDL_RenderFillRect(game.renderer, &floor);
+    // Clear buffer
+    for (int y = 0; y < game.window_height; y++) {
+      for (int x = 0; x < game.window_width; x++) {
+        game.buffer[y * game.window_width + x] = 0;
+      }
+    }
 
     // draw game
-    perform_raycasting(&game, &player);
+    perform_raycasting(&game, &textureManager, &player);
+    drawBuffer(&game);
 
     // draw HUD info
     renderText(game.renderer, font.title, "DOOM",
@@ -118,6 +157,10 @@ int main() {
     SDL_RenderPresent(game.renderer);
     SDL_Delay(16); // ~60 fps
   }
+
+  // cleanup
+  free(textureManager.textures);
+  free(game.buffer);
   TTF_CloseFont(font.title);
   TTF_CloseFont(font.ui);
   TTF_CloseFont(font.debug);

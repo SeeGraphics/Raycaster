@@ -28,14 +28,40 @@ int SDL_initialize(Game *game) {
     return 1;
   }
 
+  // Create texture for buffer
+  game->screen_texture = SDL_CreateTexture(
+      game->renderer,
+      SDL_PIXELFORMAT_ARGB8888, // 32-bit color format
+      SDL_TEXTUREACCESS_STREAMING, game->window_width, game->window_height);
+
+  if (!game->screen_texture) {
+    fprintf(stderr, "Failed to create texture: %s\n", SDL_GetError());
+    return 1;
+  }
+
   return 0;
 }
 
 int SDL_cleanup(Game *game, int exit_status) {
   if (game->renderer)
     SDL_DestroyRenderer(game->renderer);
+  if (game->screen_texture)
+    SDL_DestroyTexture(game->screen_texture);
   if (game->window)
     SDL_DestroyWindow(game->window);
   SDL_Quit();
   return exit_status;
+}
+
+void drawBuffer(Game *game) {
+  // Update texture with buffer data
+  SDL_UpdateTexture(
+      game->screen_texture,
+      NULL, // Update entire texture
+      game->buffer,
+      game->window_width * sizeof(uint32_t) // Pitch (bytes per row)
+  );
+
+  // Copy texture to renderer
+  SDL_RenderCopy(game->renderer, game->screen_texture, NULL, NULL);
 }

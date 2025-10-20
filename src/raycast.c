@@ -3,9 +3,10 @@
 #include "map.h"
 #include "math.h"
 #include "player.h"
+#include "texture.h"
 #include <math.h>
 
-void perform_raycasting(Game *game, Player *player) {
+void perform_raycasting(Game *game, TextureManager *tm, Player *player) {
   for (int x = 0; x < game->window_width; x++) {
     double cameraX = 2 * x / (double)game->window_width - 1;
     double rayDirX = player->dirX + player->planeX * cameraX;
@@ -57,31 +58,71 @@ void perform_raycasting(Game *game, Player *player) {
     if (drawEnd >= game->window_height)
       drawEnd = game->window_height - 1;
 
-    SDL_Color color;
-    switch (worldMap[mapX][mapY]) {
-    case 1:
-      color = RGB_Red;
-      break;
-    case 2:
-      color = RGB_Green;
-      break;
-    case 3:
-      color = RGB_Blue;
-      break;
-    case 4:
-      color = RGB_White;
-      break;
-    default:
-      color = RGB_Yellow;
-      break;
-    }
+    /* COLOR LOGIC FOR UNTEXTURED RAYCASTER*/
+    /* SDL_Color color; */
+    /* switch (worldMap[mapX][mapY]) { */
+    /* case 1: */
+    /*   color = RGB_Red; */
+    /*   break; */
+    /* case 2: */
+    /*   color = RGB_Green; */
+    /*   break; */
+    /* case 3: */
+    /*   color = RGB_Blue; */
+    /*   break; */
+    /* case 4: */
+    /*   color = RGB_White; */
+    /*   break; */
+    /* default: */
+    /*   color = RGB_Yellow; */
+    /*   break; */
+    /* } */
+    /**/
+    /* if (side == 1) { // darken y-sides */
+    /*   color.r /= 2; */
+    /*   color.g /= 2; */
+    /*   color.b /= 2; */
+    /* } */
+    /**/
+    /* verLine(game->renderer, x, drawStart, drawEnd, color); */
 
-    if (side == 1) { // darken y-sides
-      color.r /= 2;
-      color.g /= 2;
-      color.b /= 2;
-    }
+    // texturing calc
+    int texNum = worldMap[mapX][mapY] - 1; // -1 so we can use texture 0
 
-    verLine(game->renderer, x, drawStart, drawEnd, color);
+    // calculate value of wallX
+    double wallX; // where exactly the wall was hit
+    if (side == 0)
+      wallX = player->posY + perpWallDist * rayDirY;
+    else
+      wallX = player->posX + perpWallDist * rayDirX;
+    wallX -= floor((wallX));
+
+    // x coordinate on the texture
+    int texX = (int)(wallX * (double)TEXT_WIDTH);
+    if (side == 0 && rayDirX > 0)
+      texX = TEXT_WIDTH - texX - 1;
+    if (side == 1 && rayDirY < 0)
+      texX = TEXT_WIDTH - texX - 1; // TEXT_WIDTH not TEXT_HEIGHT
+
+    // How much to increase the texture coordinate per screen pixel
+    double step = 1.0 * TEXT_HEIGHT / lineHeight;
+
+    // Starting texture coordinate
+    double texPos =
+        (drawStart - game->window_height / 2 + lineHeight / 2) * step;
+
+    // Draw the textured vertical line
+    for (int y = drawStart; y < drawEnd; y++) {
+      int texY = (int)texPos & (TEXT_HEIGHT - 1);
+      texPos += step;
+
+      // BUG: Use TEXT_WIDTH not TEXT_HEIGHT
+      uint32_t color = tm->textures[texNum][TEXT_WIDTH * texY + texX];
+
+      if (side == 1)
+        color = (color >> 1) & 8355711;
+
+      game->buffer[y * game->window_width + x] = color;
+    }
   }
 }

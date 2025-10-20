@@ -72,6 +72,9 @@ int main() {
     time = SDL_GetTicks();
     double deltaTime = (time - oldTime) / 1000.0;
 
+    // Calculate FPS
+    int fps = (deltaTime > 0) ? (int)(1.0 / deltaTime) : 0;
+
     // Quit
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -150,12 +153,13 @@ int main() {
     perform_raycasting(&game, &textureManager, &player);
     drawBuffer(&game);
 
-    // draw HUD info
-    renderText(game.renderer, font.title, "DOOM",
-               (int)game.window_width / 2 - 40, 30, RGB_White);
+    // Draw FPS counter
+    char fpsText[32];
+    snprintf(fpsText, sizeof(fpsText), "FPS: %d", fps);
+    renderText(game.renderer, font.debug, fpsText, 10, 10, RGB_Yellow);
 
     SDL_RenderPresent(game.renderer);
-    SDL_Delay(16); // ~60 fps
+    SDL_Delay(4); // ~120fps
   }
 
   // cleanup

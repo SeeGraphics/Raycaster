@@ -21,6 +21,7 @@ typedef struct {
   int window_width;
   int window_height;
   uint32_t *buffer;
+  double *Zbuffer;
 } Game;
 
 int SDL_cleanup(Game *game, int exit_status);

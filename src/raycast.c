@@ -50,15 +50,15 @@ void perform_raycasting(Game *game, TextureManager *tm, Player *player) {
         (side == 0) ? sideDistX - deltaDistX : sideDistY - deltaDistY;
     int lineHeight = (int)(game->window_height / perpWallDist);
 
-    int drawStart = -lineHeight / 2 + game->window_height / 2;
+    int drawStart = -lineHeight / 2 + game->window_height / 2 + player->pitch;
     if (drawStart < 0)
       drawStart = 0;
 
-    int drawEnd = lineHeight / 2 + game->window_height / 2;
+    int drawEnd = lineHeight / 2 + game->window_height / 2 + player->pitch;
     if (drawEnd >= game->window_height)
       drawEnd = game->window_height - 1;
 
-    /* COLOR LOGIC FOR UNTEXTURED RAYCASTER*/
+    /* COLOR LOGIC FOR UNTEXTURED RAYCASTER */
     /* SDL_Color color; */
     /* switch (worldMap[mapX][mapY]) { */
     /* case 1: */
@@ -86,7 +86,7 @@ void perform_raycasting(Game *game, TextureManager *tm, Player *player) {
     /**/
     /* verLine(game->renderer, x, drawStart, drawEnd, color); */
 
-    // texturing calc
+    // texturing math
     int texNum = worldMap[mapX][mapY] - 1; // -1 so we can use texture 0
 
     // calculate value of wallX
@@ -109,14 +109,14 @@ void perform_raycasting(Game *game, TextureManager *tm, Player *player) {
 
     // Starting texture coordinate
     double texPos =
-        (drawStart - game->window_height / 2 + lineHeight / 2) * step;
+        (drawStart - player->pitch - game->window_height / 2 + lineHeight / 2) *
+        step;
 
     // Draw the textured vertical line
     for (int y = drawStart; y < drawEnd; y++) {
       int texY = (int)texPos & (TEXT_HEIGHT - 1);
       texPos += step;
 
-      // BUG: Use TEXT_WIDTH not TEXT_HEIGHT
       uint32_t color = tm->textures[texNum][TEXT_WIDTH * texY + texX];
 
       if (side == 1)
@@ -137,14 +137,16 @@ void perform_floorcasting(Game *game, TextureManager *tm, Player *player) {
     float rayDirY1 = player->dirY + player->planeY;
 
     // Current y position compared to the center of the screen (the horizon)
-    int p = y - game->window_height / 2;
+    int p = y - player->pitch - game->window_height / 2;
+    if (p == 0)
+      continue;
 
     // Vertical position of the camera.
     float posZ = 0.5 * game->window_height;
 
     // Horizontal distance from the camera to the floor for the current row.
     // 0.5 is the z position exactly in the middle between floor and ceiling.
-    float rowDistance = posZ / p;
+    float rowDistance = posZ / abs(p);
 
     // calculate the real world step vector we have to add for each x (parallel
     // to camera plane) adding step by step avoids multiplications with a weight
@@ -175,16 +177,17 @@ void perform_floorcasting(Game *game, TextureManager *tm, Player *player) {
       int ceilingTexture = 6;
       Uint32 color;
 
-      // floor
-      color = tm->textures[floorTexture][TEXT_WIDTH * ty + tx];
-      color = (color >> 1) & 8355711; // make a bit darker
-      game->buffer[y * game->window_width + x] = color;
-
-      // ceiling (symmetrical, at screenHeight - y - 1 instead of y)
-      color = tm->textures[ceilingTexture][TEXT_WIDTH * ty + tx];
-      color = (color >> 1) & 8355711; // make a bit darker
-      game->buffer[(game->window_height - y - 1) * game->window_width + x] =
-          color;
+      if (p > 0) {
+        // floor (below horizon)
+        color = tm->textures[floorTexture][TEXT_WIDTH * ty + tx];
+        color = (color >> 1) & 8355711;
+        game->buffer[y * game->window_width + x] = color;
+      } else {
+        // ceiling (above horizon)
+        color = tm->textures[ceilingTexture][TEXT_WIDTH * ty + tx];
+        color = (color >> 1) & 8355711;
+        game->buffer[y * game->window_width + x] = color;
+      }
     }
   }
 }

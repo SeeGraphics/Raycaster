@@ -50,7 +50,7 @@ double key_rotationAmount(double rotSpeed, double deltaTime, int direction) {
   return rotationAmount;
 }
 
-double mouse_rotationAmount(double sensitivity, Sint16 xrel) {
-  double rotationAmount = xrel * sensitivity;
+double mouse_rotationAmount(double sensX, Sint16 xrel) {
+  double rotationAmount = xrel * sensX;
   return rotationAmount;
 }

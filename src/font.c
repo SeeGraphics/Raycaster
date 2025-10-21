@@ -14,3 +14,24 @@ void renderText(SDL_Renderer *renderer, TTF_Font *font, const char *message,
   SDL_FreeSurface(surface);
   SDL_DestroyTexture(texture);
 }
+
+void renderFloatPair(SDL_Renderer *renderer, TTF_Font *font, const char *label,
+                     double x, double y, int xpos, int ypos, SDL_Color color) {
+  char buffer[64];
+  snprintf(buffer, sizeof(buffer), "%s: %.2f %.2f", label, x, y);
+  renderText(renderer, font, buffer, xpos, ypos, color);
+}
+
+void renderInt(SDL_Renderer *renderer, TTF_Font *font, const char *label,
+               int value, int x, int y, SDL_Color color) {
+  char buffer[32];
+  snprintf(buffer, sizeof(buffer), "%s: %d", label, value);
+  renderText(renderer, font, buffer, x, y, color);
+}
+
+void renderFloat(SDL_Renderer *renderer, TTF_Font *font, const char *label,
+                 double value, int x, int y, SDL_Color color) {
+  char buffer[32];
+  snprintf(buffer, sizeof(buffer), "%s: %.2f", label, value);
+  renderText(renderer, font, buffer, x, y, color);
+}

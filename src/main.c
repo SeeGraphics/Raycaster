@@ -3,6 +3,7 @@
 #include "map.h"
 #include "player.h"
 #include "raycast.h"
+#include "sprites.h"
 #include "texture.h"
 #include <stdbool.h>
 #include <stdio.h>
@@ -14,9 +15,37 @@
 
 int main() {
   // Create game objects
-  Game game = {NULL, NULL, NULL, TITLE, WINDOW_WIDTH, WINDOW_HEIGHT, NULL};
-  Player player = {22, 22, -1, 0, 0, 0.88, 5.0, 3.0, 0.002};
+  Game game = {NULL,         NULL,          NULL, TITLE,
+               WINDOW_WIDTH, WINDOW_HEIGHT, NULL, NULL};
+  Player player = {POS_X,      POS_Y,     DIR_X,  DIR_Y,  PLANE_X, PLANE_Y,
+                   MOVE_SPEED, ROT_SPEED, SENS_X, SENS_Y, PITCH};
   TextureManager textureManager = {NULL};
+  Sprite sprite[NUM_SPRITES] = {
+      // green lights
+      {20.5, 11.5, 10},
+      {18.5, 4.5, 10},
+      {10.0, 4.5, 10},
+      {10.0, 12.5, 10},
+      {3.5, 6.5, 10},
+      {3.5, 20.5, 10},
+      {3.5, 14.5, 10},
+      {14.5, 20.5, 10},
+
+      // row of pillars
+      {18.5, 10.5, 9},
+      {18.5, 11.5, 9},
+      {18.5, 12.5, 9},
+
+      // barrels
+      {21.5, 1.5, 8},
+      {15.5, 1.5, 8},
+      {16.0, 1.8, 8},
+      {16.2, 1.2, 8},
+      {3.5, 2.5, 8},
+      {9.5, 15.5, 8},
+      {10.0, 15.1, 8},
+      {10.5, 15.8, 8},
+  };
 
   // delta time variables
   double time = 0, oldTime = 0;
@@ -53,9 +82,9 @@ int main() {
     return EXIT_FAILURE;
   }
   Font font = {
-      TTF_OpenFont("assets/font/Doom.ttf", 120),
-      TTF_OpenFont("assets/font/Doom.ttf", 60),
-      TTF_OpenFont("assets/font/Doom.ttf", 90),
+      TTF_OpenFont("assets/font/Doom.ttf", 120), // title
+      TTF_OpenFont("assets/font/Doom.ttf", 40),  // debug
+      TTF_OpenFont("assets/font/Doom.ttf", 90),  // UI
   };
   if (!font.debug || !font.ui || !font.title) {
     fprintf(stderr, "Failed to load font: %s\n", TTF_GetError());
@@ -129,8 +158,13 @@ int main() {
 
       // mouse control
       if (event.type == SDL_MOUSEMOTION) {
-        player_rotate(&player, mouse_rotationAmount(player.sensitivity,
-                                                    -event.motion.xrel));
+        player_rotate(&player,
+                      mouse_rotationAmount(player.sensX, -event.motion.xrel));
+        player.pitch -= event.motion.yrel * player.sensX * player.sensY;
+        if (player.pitch > CLAMP)
+          player.pitch = CLAMP;
+        else if (player.pitch < -CLAMP)
+          player.pitch = -CLAMP;
       }
     }
 
@@ -164,17 +198,27 @@ int main() {
     }
 
     // draw game
-    perform_floorcasting(&game, &textureManager, &player); // floor and roof
+    perform_floorcasting(&game, &textureManager, &player);
     perform_raycasting(&game, &textureManager, &player);
     drawBuffer(&game);
 
-    // Draw FPS counter
-    char fpsText[32];
-    snprintf(fpsText, sizeof(fpsText), "FPS: %d", fps);
-    renderText(game.renderer, font.debug, fpsText, 10, 10, RGB_Yellow);
+    // draw FPS counter
+    renderInt(game.renderer, font.debug, "FPS", fps, 10, 10, RGB_Yellow);
+    // draw Coordinates
+    renderFloatPair(game.renderer, font.debug, "POS", player.posX, player.posY,
+                    10, 50, RGB_Yellow);
+    // draw direction
+    renderFloatPair(game.renderer, font.debug, "DIR", player.dirX, player.dirY,
+                    10, 90, RGB_Yellow);
+    // draw pitch
+    renderFloat(game.renderer, font.debug, "PITCH", player.pitch, 10, 170,
+                RGB_Yellow);
+    // draw plane
+    renderFloatPair(game.renderer, font.debug, "PLANE", player.planeX,
+                    player.planeY, 10, 130, RGB_Yellow);
 
     SDL_RenderPresent(game.renderer);
-    SDL_Delay(2); // ~140 fps
+    SDL_Delay(2);
   }
 
   // cleanup

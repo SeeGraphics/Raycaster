@@ -4,7 +4,7 @@
 
 void player_move(Player *player, double deltaTime,
                  int worldMap[MAP_HEIGHT][MAP_WIDTH], int direction) {
-  double moveStep = player->moveSpeed * deltaTime * direction; // 1 or -1
+  double moveStep = player->moveSpeed * deltaTime * direction;
 
   double newX = player->posX + player->dirX * moveStep;
   double newY = player->posY + player->dirY * moveStep;

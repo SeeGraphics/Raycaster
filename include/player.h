@@ -5,9 +5,9 @@
 #include "map.h"
 #include <stdbool.h>
 
-#define CLAMP 120
-#define POS_X 20.3
-#define POS_Y 20.5
+#define CLAMP 160
+#define POS_X 22.0
+#define POS_Y 11.5
 #define DIR_X -1.0
 #define DIR_Y 0.0
 #define PLANE_X 0.0
@@ -35,7 +35,6 @@ void player_move(Player *player, double deltaTime,
 void player_strafe(Player *player, double deltaTime,
                    int worldMap[MAP_HEIGHT][MAP_WIDTH], int direction);
 
-// rotation
 void player_rotate(Player *player, double rotationAmount);
 double mouse_rotationAmount(double sensX, Sint16 xrel);
 double key_rotationAmount(double rotSpeed, double deltaTime, int direction);

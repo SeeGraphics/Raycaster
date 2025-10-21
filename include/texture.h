@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 // texture size
-#define NUM_TEXTURES 8
+#define NUM_TEXTURES 12
 #define TEXT_HEIGHT 64
 #define TEXT_WIDTH 64
 

@@ -58,34 +58,6 @@ void perform_raycasting(Game *game, TextureManager *tm, Player *player) {
     if (drawEnd >= game->window_height)
       drawEnd = game->window_height - 1;
 
-    /* COLOR LOGIC FOR UNTEXTURED RAYCASTER */
-    /* SDL_Color color; */
-    /* switch (worldMap[mapX][mapY]) { */
-    /* case 1: */
-    /*   color = RGB_Red; */
-    /*   break; */
-    /* case 2: */
-    /*   color = RGB_Green; */
-    /*   break; */
-    /* case 3: */
-    /*   color = RGB_Blue; */
-    /*   break; */
-    /* case 4: */
-    /*   color = RGB_White; */
-    /*   break; */
-    /* default: */
-    /*   color = RGB_Yellow; */
-    /*   break; */
-    /* } */
-    /**/
-    /* if (side == 1) { // darken y-sides */
-    /*   color.r /= 2; */
-    /*   color.g /= 2; */
-    /*   color.b /= 2; */
-    /* } */
-    /**/
-    /* verLine(game->renderer, x, drawStart, drawEnd, color); */
-
     // texturing math
     int texNum = worldMap[mapX][mapY] - 1; // -1 so we can use texture 0
 
@@ -124,6 +96,8 @@ void perform_raycasting(Game *game, TextureManager *tm, Player *player) {
 
       game->buffer[y * game->window_width + x] = color;
     }
+    // set z-buffer for sprites
+    game->Zbuffer[x] = perpWallDist;
   }
 }
 

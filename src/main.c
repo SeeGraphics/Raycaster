@@ -1,8 +1,10 @@
 #include "font.h"
 #include "graphics.h"
+#include "gun.h"
 #include "map.h"
 #include "player.h"
 #include "raycast.h"
+#include "sound.h"
 #include "sprites.h"
 #include "texture.h"
 #include <stdbool.h>
@@ -20,7 +22,10 @@ int main() {
   Player player = {POS_X,      POS_Y,     DIR_X,  DIR_Y,  PLANE_X, PLANE_Y,
                    MOVE_SPEED, ROT_SPEED, SENS_X, SENS_Y, PITCH};
   TextureManager textureManager = {NULL};
+  GunAnim gunAnim = {0, 0.10, 0.0, 0};
+  SoundManager soundManager = {NULL};
   Sprite sprite[NUM_SPRITES] = {
+      // TODO: put in function createSprites()
       // green lights
       {20.5, 11.5, 10},
       {18.5, 4.5, 10},
@@ -32,19 +37,19 @@ int main() {
       {14.5, 20.5, 10},
 
       // row of pillars
-      {18.5, 10.5, 9},
-      {18.5, 11.5, 9},
-      {18.5, 12.5, 9},
+      {18.5, 10.5, 11},
+      {18.5, 11.5, 8},
+      {18.5, 12.5, 8},
 
       // barrels
-      {21.5, 1.5, 8},
-      {15.5, 1.5, 8},
-      {16.0, 1.8, 8},
-      {16.2, 1.2, 8},
-      {3.5, 2.5, 8},
-      {9.5, 15.5, 8},
-      {10.0, 15.1, 8},
-      {10.5, 15.8, 8},
+      {21.5, 1.5, 9},
+      {15.5, 1.5, 9},
+      {16.0, 1.8, 9},
+      {16.2, 1.2, 9},
+      {3.5, 2.5, 9},
+      {9.5, 15.5, 9},
+      {10.0, 15.1, 9},
+      {10.5, 15.8, 9},
   };
 
   // delta time variables
@@ -55,7 +60,14 @@ int main() {
     return SDL_cleanup(&game, EXIT_FAILURE);
   }
 
-  // allocate screen buffer
+  // Initialize sound system
+  if (initSound() < 0) {
+    fprintf(stderr, "Failed to initialize sound\n");
+    return SDL_cleanup(&game, EXIT_FAILURE);
+  }
+  loadSounds(&soundManager);
+
+  // allocate screen buffer -- TODO: helper function here too
   game.buffer =
       malloc(game.window_width * game.window_height * sizeof(uint32_t));
   if (!game.buffer) {
@@ -64,7 +76,15 @@ int main() {
     return 1;
   }
 
-  // allocate textures
+  // allocate Zbuffer -- TODO: create helper function for this
+  game.Zbuffer = malloc(game.window_width * sizeof(double));
+  if (!game.Zbuffer) {
+    fprintf(stderr, "Couldn't allocate Zbuffer");
+    SDL_cleanup(&game, EXIT_FAILURE);
+    return 1;
+  }
+
+  // allocate textures -- TODO: helper function
   for (int i = 0; i < NUM_TEXTURES; i++) {
     textureManager.textures[i] =
         malloc(TEXT_WIDTH * TEXT_HEIGHT * sizeof(uint32_t));
@@ -76,7 +96,10 @@ int main() {
   }
   loadTextures(&textureManager, TEXT_WIDTH, TEXT_HEIGHT);
 
-  // Font loading
+  // load all gun frames
+  loadAllGunTextures(game.renderer);
+
+  // Font loading -- TODO: helper function
   if (TTF_Init() == -1) {
     printf("TTF_Init failed: %s\n", TTF_GetError());
     return EXIT_FAILURE;
@@ -108,6 +131,8 @@ int main() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_QUIT) {
+        cleanupGunTextures();
+        cleanupSound(&soundManager);
         return SDL_cleanup(&game, EXIT_SUCCESS);
       }
 
@@ -120,6 +145,8 @@ int main() {
               game.window, isFullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
         }
         if (event.key.keysym.scancode == SDL_SCANCODE_ESCAPE) {
+          cleanupGunTextures();
+          cleanupSound(&soundManager);
           return SDL_cleanup(&game, EXIT_SUCCESS);
         }
       }
@@ -130,7 +157,7 @@ int main() {
           game.window_width = event.window.data1;
           game.window_height = event.window.data2;
 
-          // free & reallocate buffer for textures
+          // free & reallocate buffer for textures -- TODO: helper function
           free(game.buffer);
           game.buffer =
               malloc(game.window_width * game.window_height * sizeof(uint32_t));
@@ -139,8 +166,15 @@ int main() {
             SDL_cleanup(&game, EXIT_FAILURE);
             return 1;
           }
+          free(game.Zbuffer);
+          game.Zbuffer = malloc(game.window_width * sizeof(double));
+          if (!game.Zbuffer) {
+            fprintf(stderr, "Couldn't allocate Zbuffer");
+            SDL_cleanup(&game, EXIT_FAILURE);
+            return 1;
+          }
 
-          // recreate texture
+          // recreate texture -- TODO: helper function
           if (game.screen_texture) {
             SDL_DestroyTexture(game.screen_texture);
           }
@@ -160,15 +194,40 @@ int main() {
       if (event.type == SDL_MOUSEMOTION) {
         player_rotate(&player,
                       mouse_rotationAmount(player.sensX, -event.motion.xrel));
+        // TODO: helper function
         player.pitch -= event.motion.yrel * player.sensX * player.sensY;
         if (player.pitch > CLAMP)
           player.pitch = CLAMP;
         else if (player.pitch < -CLAMP)
           player.pitch = -CLAMP;
       }
+      if (event.type == SDL_MOUSEBUTTONDOWN &&
+          event.button.button == SDL_BUTTON_LEFT) {
+        if (!gunAnim.playing) {
+          gunAnim.playing = 1;
+          gunAnim.currentFrame = 0;
+          gunAnim.timeAccumulator = 0.0;
+          playGunShot(&soundManager);
+        }
+      }
     }
 
-    // Input
+    // update animation
+    if (gunAnim.playing) {
+      gunAnim.timeAccumulator += deltaTime;
+      if (gunAnim.timeAccumulator >= gunAnim.frameTime) {
+        gunAnim.timeAccumulator -= gunAnim.frameTime;
+        gunAnim.currentFrame++;
+
+        // Stop animation when finished
+        if (gunAnim.currentFrame >= SHOTGUN_SHOOT_FRAMES) {
+          gunAnim.currentFrame = 0;
+          gunAnim.playing = 0;
+        }
+      }
+    }
+
+    // Input TODO: Mabye put this in player?
     const Uint8 *state = SDL_GetKeyboardState(NULL);
     if (state[SDL_SCANCODE_Q] && SDL_GetRelativeMouseMode())
       SDL_SetRelativeMouseMode(SDL_FALSE);
@@ -200,7 +259,13 @@ int main() {
     // draw game
     perform_floorcasting(&game, &textureManager, &player);
     perform_raycasting(&game, &textureManager, &player);
+    perform_spritecasting(&game, sprite, &textureManager, &player);
     drawBuffer(&game);
+
+    // Draw the current gun frame
+    if (gunTextures[gunAnim.currentFrame]) {
+      drawGunTexture(&game, gunTextures[gunAnim.currentFrame], 0.4f, 0.6f);
+    }
 
     // draw FPS counter
     renderInt(game.renderer, font.debug, "FPS", fps, 10, 10, RGB_Yellow);
@@ -218,15 +283,19 @@ int main() {
                     player.planeY, 10, 130, RGB_Yellow);
 
     SDL_RenderPresent(game.renderer);
-    SDL_Delay(2);
   }
 
   // cleanup
-  free(textureManager.textures);
+  for (int i = 0; i < NUM_TEXTURES; i++) {
+    free(textureManager.textures[i]);
+  }
   free(game.buffer);
+  free(game.Zbuffer);
   TTF_CloseFont(font.title);
   TTF_CloseFont(font.ui);
   TTF_CloseFont(font.debug);
+  cleanupGunTextures();
+  cleanupSound(&soundManager);
 
   return SDL_cleanup(&game, EXIT_SUCCESS);
 }

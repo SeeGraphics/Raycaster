@@ -21,21 +21,28 @@ Mix_Chunk *loadSound(const char *path) {
 }
 
 void loadSounds(SoundManager *soundManager) {
-  soundManager->gunShot = loadSound("assets/sounds/shotgun_shoot.mp3");
+  soundManager->ShotgunShot = loadSound("assets/sounds/shotgun_shoot.mp3");
+  soundManager->ShotgunReload = loadSound("assets/sounds/shotgun_reload.mp3");
 
   printf("Sounds loaded...\n");
 }
 
-void playGunShot(SoundManager *soundManager) {
-  if (soundManager->gunShot) {
-    Mix_PlayChannel(-1, soundManager->gunShot, 0);
+void playShotgunShot(SoundManager *soundManager) {
+  if (soundManager->ShotgunShot) {
+    Mix_PlayChannel(-1, soundManager->ShotgunShot, 0);
+  }
+}
+
+void playShotgunReload(SoundManager *soundManager) {
+  if (soundManager->ShotgunReload) {
+    Mix_PlayChannel(-1, soundManager->ShotgunReload, 0);
   }
 }
 
 void cleanupSound(SoundManager *soundManager) {
-  if (soundManager->gunShot) {
-    Mix_FreeChunk(soundManager->gunShot);
-    soundManager->gunShot = NULL;
+  if (soundManager->ShotgunShot) {
+    Mix_FreeChunk(soundManager->ShotgunShot);
+    soundManager->ShotgunShot = NULL;
   }
   Mix_CloseAudio();
 }

@@ -4,7 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-SDL_Texture *gunTextures[SHOTGUN_SHOOT_FRAMES];
+SDL_Texture *gunTextures[SHOTGUN_SHOOT_FRAMES] = {NULL};
+SDL_Texture *reloadTextures[SHOTGUN_RELOAD_FRAMES] = {NULL};
 
 SDL_Texture *loadGunTexture(SDL_Renderer *renderer, const char *filePath) {
   SDL_Surface *surface = IMG_Load(filePath);
@@ -29,7 +30,8 @@ SDL_Texture *loadGunTexture(SDL_Renderer *renderer, const char *filePath) {
 
   return texture;
 }
-void loadAllGunTextures(SDL_Renderer *renderer) {
+
+void loadAllTextures_Shotgun_shoot(SDL_Renderer *renderer) {
   char filePath[256];
   for (int i = 0; i < SHOTGUN_SHOOT_FRAMES; i++) {
     snprintf(filePath, sizeof(filePath),
@@ -37,6 +39,18 @@ void loadAllGunTextures(SDL_Renderer *renderer) {
     gunTextures[i] = loadGunTexture(renderer, filePath);
     if (!gunTextures[i]) {
       fprintf(stderr, "Failed to load gun frame %d!\n", i);
+    }
+  }
+}
+
+void loadAllTextures_Shotgun_reload(SDL_Renderer *renderer) {
+  char filePath[256];
+  for (int i = 0; i < SHOTGUN_RELOAD_FRAMES; i++) {
+    snprintf(filePath, sizeof(filePath),
+             "assets/textures/weapons/shotgun/reload/%d.png", i);
+    reloadTextures[i] = loadGunTexture(renderer, filePath);
+    if (!reloadTextures[i]) {
+      fprintf(stderr, "Failed to load gun reload frame %d!\n", i);
     }
   }
 }

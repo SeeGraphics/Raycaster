@@ -4,12 +4,14 @@
 #include "SDL_mixer.h"
 
 typedef struct {
-  Mix_Chunk *gunShot;
+  Mix_Chunk *ShotgunShot;
+  Mix_Chunk *ShotgunReload;
 } SoundManager;
 
 int initSound();
 void loadSounds(SoundManager *soundManager);
-void playGunShot(SoundManager *soundManager);
+void playShotgunShot(SoundManager *soundManager);
+void playShotgunReload(SoundManager *soundManager);
 void cleanupSound(SoundManager *soundManager);
 
 #endif

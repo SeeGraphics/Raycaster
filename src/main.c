@@ -22,8 +22,7 @@ int main() {
   Player player = {POS_X,      POS_Y,     DIR_X,  DIR_Y,  PLANE_X, PLANE_Y,
                    MOVE_SPEED, ROT_SPEED, SENS_X, SENS_Y, PITCH};
   TextureManager textureManager = {NULL};
-  GunAnim gunAnim = {0, 0.10, 0.0, 0};
-  SoundManager soundManager = {NULL};
+  SoundManager soundManager = {NULL, NULL};
   Sprite sprite[NUM_SPRITES] = {
       // TODO: put in function createSprites()
       // green lights
@@ -97,7 +96,9 @@ int main() {
   loadTextures(&textureManager, TEXT_WIDTH, TEXT_HEIGHT);
 
   // load all gun frames
-  loadAllGunTextures(game.renderer);
+  loadAllTextures_Shotgun_shoot(game.renderer);
+  loadAllTextures_Shotgun_reload(game.renderer);
+  GunAnim gunAnim = {0, 0.10, 0.0, 0, gunTextures, SHOTGUN_SHOOT_FRAMES};
 
   // Font loading -- TODO: helper function
   if (TTF_Init() == -1) {
@@ -148,6 +149,15 @@ int main() {
           cleanupGunTextures();
           cleanupSound(&soundManager);
           return SDL_cleanup(&game, EXIT_SUCCESS);
+        }
+        if (event.key.keysym.scancode == SDL_SCANCODE_R &&
+            gunAnim.playing == 0) {
+          gunAnim.playing = 1;
+          gunAnim.currentFrame = 0;
+          gunAnim.timeAccumulator = 0.0;
+          gunAnim.currentAnim = reloadTextures;
+          gunAnim.maxFrames = SHOTGUN_RELOAD_FRAMES;
+          playShotgunReload(&soundManager);
         }
       }
 
@@ -202,13 +212,13 @@ int main() {
           player.pitch = -CLAMP;
       }
       if (event.type == SDL_MOUSEBUTTONDOWN &&
-          event.button.button == SDL_BUTTON_LEFT) {
-        if (!gunAnim.playing) {
-          gunAnim.playing = 1;
-          gunAnim.currentFrame = 0;
-          gunAnim.timeAccumulator = 0.0;
-          playGunShot(&soundManager);
-        }
+          event.button.button == SDL_BUTTON_LEFT && gunAnim.playing == 0) {
+        gunAnim.playing = 1;
+        gunAnim.currentFrame = 0;
+        gunAnim.timeAccumulator = 0.0;
+        gunAnim.currentAnim = gunTextures;
+        gunAnim.maxFrames = SHOTGUN_SHOOT_FRAMES;
+        playShotgunShot(&soundManager);
       }
     }
 
@@ -220,9 +230,12 @@ int main() {
         gunAnim.currentFrame++;
 
         // Stop animation when finished
-        if (gunAnim.currentFrame >= SHOTGUN_SHOOT_FRAMES) {
+        if (gunAnim.currentFrame >= gunAnim.maxFrames) {
           gunAnim.currentFrame = 0;
           gunAnim.playing = 0;
+
+          gunAnim.currentAnim = gunTextures;
+          gunAnim.maxFrames = SHOTGUN_SHOOT_FRAMES;
         }
       }
     }
@@ -263,8 +276,9 @@ int main() {
     drawBuffer(&game);
 
     // Draw the current gun frame
-    if (gunTextures[gunAnim.currentFrame]) {
-      drawGunTexture(&game, gunTextures[gunAnim.currentFrame], 0.4f, 0.6f);
+    if (gunAnim.currentAnim && gunAnim.currentAnim[gunAnim.currentFrame]) {
+      drawGunTexture(&game, gunAnim.currentAnim[gunAnim.currentFrame], 0.4f,
+                     0.6f);
     }
 
     // draw FPS counter

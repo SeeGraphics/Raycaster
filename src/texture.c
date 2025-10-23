@@ -3,6 +3,25 @@
 #include <SDL2/SDL_image.h>
 #include <stdio.h>
 
+TextureManager createTextures() {
+  TextureManager t = {NULL};
+  return t;
+}
+
+int textures_load(TextureManager *tm) {
+  for (int i = 0; i < NUM_TEXTURES; i++) {
+    tm->textures[i] = malloc(TEXT_WIDTH * TEXT_HEIGHT * sizeof(uint32_t));
+    if (!tm->textures[i]) {
+      fprintf(stderr, "Couldn't allocate texture %d", i);
+      free(tm->textures[i]);
+      return 1;
+    }
+  }
+
+  loadTextures(tm, TEXT_WIDTH, TEXT_HEIGHT);
+  return 0;
+}
+
 void loadImage(uint32_t *texture, int width, int height, const char *filename) {
   // Load image file
   SDL_Surface *surface = IMG_Load(filename);

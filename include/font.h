@@ -9,6 +9,9 @@ typedef struct {
   TTF_Font *ui;
 } Font;
 
+// init
+Font font_init();
+
 void renderText(SDL_Renderer *renderer, TTF_Font *font, const char *message,
                 int x, int y, SDL_Color color);
 void renderFloatPair(SDL_Renderer *renderer, TTF_Font *font, const char *label,

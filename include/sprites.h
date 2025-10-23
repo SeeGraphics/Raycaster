@@ -1,9 +1,7 @@
 #ifndef SPRITES_H
 #define SPRITES_H
 
-#include "graphics.h"
-#include "player.h"
-#include "texture.h"
+#include "engine.h"
 
 #define NUM_SPRITES 19
 
@@ -13,8 +11,11 @@ typedef struct {
   int texture;
 } Sprite;
 
-void perform_spritecasting(Game *game, Sprite *sprite, TextureManager *tm,
-                           Player *player);
+// init
+Sprite *createSprite();
+
+// calculations
+void perform_spritecasting(Engine *engine);
 void sortSprites(int *order, double *dist, int amount);
 
 #endif

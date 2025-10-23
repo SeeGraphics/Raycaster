@@ -3,6 +3,10 @@
 
 #include <SDL2/SDL.h>
 
+#define WINDOW_WIDTH 1200
+#define WINDOW_HEIGHT 800
+#define TITLE "Raycaster"
+
 // colors
 #define RGB_Red ((SDL_Color){255, 0, 0, 255})
 #define RGB_Green ((SDL_Color){0, 255, 0, 255})
@@ -24,15 +28,11 @@ typedef struct {
   double *Zbuffer;
 } Game;
 
+Game createGame();
+int buffers_reallocate(Game *game);
+int buffers_init(Game *game);
 int SDL_cleanup(Game *game, int exit_status);
 int SDL_initialize(Game *game);
 void drawBuffer(Game *game);
-
-// // this draws the walls for untextured raycaster
-// static inline void verLine(SDL_Renderer *renderer, int x, int y1, int y2,
-//                            SDL_Color color) {
-//   SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-//   SDL_RenderDrawLine(renderer, x, y1, x, y2);
-// }
 
 #endif

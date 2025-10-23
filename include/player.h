@@ -29,6 +29,9 @@ typedef struct {
   double pitch;
 } Player;
 
+// init
+Player createPlayer();
+
 // movement
 void player_move(Player *player, double deltaTime,
                  int worldMap[MAP_HEIGHT][MAP_WIDTH], int direction);

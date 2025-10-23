@@ -1,5 +1,15 @@
 #include "font.h"
 
+Font font_init() {
+  Font f = {
+      TTF_OpenFont("assets/font/Doom.ttf", 120), // title
+      TTF_OpenFont("assets/font/Doom.ttf", 40),  // debug
+      TTF_OpenFont("assets/font/Doom.ttf", 90),  // UI
+  };
+
+  return f;
+}
+
 void renderText(SDL_Renderer *renderer, TTF_Font *font, const char *message,
                 int x, int y, SDL_Color color) {
   // create surface, texture, pos/size

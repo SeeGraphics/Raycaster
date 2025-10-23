@@ -8,6 +8,7 @@ typedef struct {
   Mix_Chunk *ShotgunReload;
 } SoundManager;
 
+SoundManager createSound();
 int initSound();
 void loadSounds(SoundManager *soundManager);
 void playShotgunShot(SoundManager *soundManager);

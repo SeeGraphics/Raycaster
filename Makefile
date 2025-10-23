@@ -4,7 +4,7 @@ LDFLAGS = `sdl2-config --libs` -lSDL2_ttf -lSDL2_image -lSDL2_mixer
 SRC_DIR = src
 BUILD_DIR = build
 
-SOURCES = main.c map.c graphics.c player.c camera.c raycast.c font.c texture.c sprites.c gun.c sound.c
+SOURCES = main.c engine.c input.c map.c graphics.c player.c camera.c raycast.c font.c texture.c sprites.c gun.c sound.c 
 OBJECTS = $(SOURCES:%.c=$(BUILD_DIR)/%.o)
 TARGET = $(BUILD_DIR)/raycast
 

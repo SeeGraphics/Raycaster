@@ -3,6 +3,49 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+Game createGame() {
+  Game g = {NULL, NULL, NULL, TITLE, WINDOW_WIDTH, WINDOW_HEIGHT, NULL, NULL};
+  return g;
+}
+
+int buffers_reallocate(Game *game) {
+  free(game->buffer);
+  game->buffer =
+      malloc(game->window_width * game->window_height * sizeof(uint32_t));
+  if (!game->buffer) {
+    fprintf(stderr, "Couldn't allocate buffer");
+    SDL_cleanup(game, EXIT_FAILURE);
+    return 1;
+  }
+  free(game->Zbuffer);
+  game->Zbuffer = malloc(game->window_width * sizeof(double));
+  if (!game->Zbuffer) {
+    fprintf(stderr, "Couldn't allocate Zbuffer");
+    SDL_cleanup(game, EXIT_FAILURE);
+    return 1;
+  }
+  return 0;
+}
+
+int buffers_init(Game *game) {
+  // game pixel buffer (main buffer we draw to)
+  game->buffer =
+      malloc(game->window_width * game->window_height * sizeof(uint32_t));
+  if (!game->buffer) {
+    fprintf(stderr, "Couldn't allocate buffer");
+    SDL_cleanup(game, EXIT_FAILURE);
+    return 1;
+  }
+  // Z-index for sprites...
+  game->Zbuffer = malloc(game->window_width * sizeof(double));
+  if (!game->Zbuffer) {
+    fprintf(stderr, "Couldn't allocate Zbuffer");
+    SDL_cleanup(game, EXIT_FAILURE);
+    return 1;
+  }
+  return 0;
+}
+
 int SDL_initialize(Game *game) {
   if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
     fprintf(stderr, "SDL failed to initialize: %s\n", SDL_GetError());

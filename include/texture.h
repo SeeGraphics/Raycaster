@@ -12,6 +12,11 @@ typedef struct {
   uint32_t *textures[NUM_TEXTURES];
 } TextureManager;
 
+// init
+TextureManager createTextures();
+int textures_load(TextureManager *tm);
+
+// loading
 void loadImage(uint32_t *texture, int width, int height, const char *filename);
 void loadTextures(TextureManager *tm, int texWidth, int texHeight);
 

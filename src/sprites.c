@@ -3,6 +3,37 @@
 #include "player.h"
 #include "texture.h"
 
+Sprite *createSprite() {
+  static Sprite s[NUM_SPRITES] = {
+      // green lights
+      {20.5, 11.5, 10},
+      {18.5, 4.5, 10},
+      {10.0, 4.5, 10},
+      {10.0, 12.5, 10},
+      {3.5, 6.5, 10},
+      {3.5, 20.5, 10},
+      {3.5, 14.5, 10},
+      {14.5, 20.5, 10},
+
+      // row of pillars
+      {18.5, 10.5, 11},
+      {18.5, 11.5, 8},
+      {18.5, 12.5, 8},
+
+      // barrels
+      {21.5, 1.5, 9},
+      {15.5, 1.5, 9},
+      {16.0, 1.8, 9},
+      {16.2, 1.2, 9},
+      {3.5, 2.5, 9},
+      {9.5, 15.5, 9},
+      {10.0, 15.1, 9},
+      {10.5, 15.8, 9},
+  };
+
+  return s;
+}
+
 void perform_spritecasting(Game *game, Sprite *sprite, TextureManager *tm,
                            Player *player) {
   int spriteOrder[NUM_SPRITES];

@@ -7,6 +7,12 @@
 SDL_Texture *gunTextures[SHOTGUN_SHOOT_FRAMES] = {NULL};
 SDL_Texture *reloadTextures[SHOTGUN_RELOAD_FRAMES] = {NULL};
 
+GunAnim createGunAnim() {
+  GunAnim g = {0, 0.10, 0.0, 0, gunTextures, SHOTGUN_SHOOT_FRAMES};
+
+  return g;
+}
+
 SDL_Texture *loadGunTexture(SDL_Renderer *renderer, const char *filePath) {
   SDL_Surface *surface = IMG_Load(filePath);
   if (!surface) {

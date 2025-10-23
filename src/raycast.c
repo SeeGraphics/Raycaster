@@ -1,12 +1,8 @@
 #include "raycast.h"
-#include "graphics.h"
 #include "map.h"
-#include "math.h"
-#include "player.h"
 #include "texture.h"
-#include <math.h>
 
-void perform_raycasting(Game *game, TextureManager *tm, Player *player) {
+void perform_raycasting(Engine *engine) {
   for (int x = 0; x < game->window_width; x++) {
     double cameraX = 2 * x / (double)game->window_width - 1;
     double rayDirX = player->dirX + player->planeX * cameraX;
@@ -101,7 +97,7 @@ void perform_raycasting(Game *game, TextureManager *tm, Player *player) {
   }
 }
 
-void perform_floorcasting(Game *game, TextureManager *tm, Player *player) {
+void perform_floorcasting(Engine *engine) {
   // FLOOR CASTING
   for (int y = 0; y < game->window_height; y++) {
     // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)

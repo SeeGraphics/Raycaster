@@ -17,6 +17,9 @@ typedef struct {
   int maxFrames;
 } GunAnim;
 
+// init
+GunAnim createGunAnim();
+
 SDL_Texture *loadGunTexture(SDL_Renderer *renderer, const char *filePath);
 void loadAllTextures_Shotgun_shoot(SDL_Renderer *renderer);
 void loadAllTextures_Shotgun_reload(SDL_Renderer *renderer);

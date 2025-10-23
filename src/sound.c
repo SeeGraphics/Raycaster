@@ -1,6 +1,11 @@
 #include "sound.h"
 #include <stdio.h>
 
+SoundManager createSound() {
+  SoundManager s = {NULL, NULL};
+  return s;
+}
+
 int initSound() {
   if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
     printf("SDL_mixer could not initialize! SDL_mixer Error: %s\n",

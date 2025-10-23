@@ -29,6 +29,8 @@ typedef struct {
 } Game;
 
 Game createGame();
+
+void clearBuffer(Game *game);
 int buffers_reallocate(Game *game);
 int buffers_init(Game *game);
 int SDL_cleanup(Game *game, int exit_status);

@@ -3,6 +3,10 @@
 int handleInput(Engine *engine, double deltaTime) {
   SDL_Event event;
 
+  // TODO: create events.c and .h put all quit and resize stuff there, strictly
+  // movement here
+  // for that create handlemousmotion, handlemouseclick, handleKeypress,
+  // handleWindowresize...
   while (SDL_PollEvent(&event)) {
 
     /* WINDOW */

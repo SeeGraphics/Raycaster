@@ -9,7 +9,7 @@
 #include "sprites.h"
 #include "texture.h"
 
-typedef struct {
+typedef struct Engine {
   // Objects
   Game game;
   Player player;

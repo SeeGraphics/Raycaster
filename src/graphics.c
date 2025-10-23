@@ -27,6 +27,14 @@ int buffers_reallocate(Game *game) {
   return 0;
 }
 
+void clearBuffer(Game *game) {
+  for (int y = 0; y < game->window_height; y++) {
+    for (int x = 0; x < game->window_width; x++) {
+      game->buffer[y * game->window_width + x] = 0;
+    }
+  }
+}
+
 int buffers_init(Game *game) {
   // game pixel buffer (main buffer we draw to)
   game->buffer =

@@ -3,11 +3,13 @@
 #include <SDL2/SDL_image.h>
 #include <stdio.h>
 
+// create Object for Engine
 TextureManager createTextures() {
   TextureManager t = {NULL};
   return t;
 }
 
+// allocate textures when running
 int textures_load(TextureManager *tm) {
   for (int i = 0; i < NUM_TEXTURES; i++) {
     tm->textures[i] = malloc(TEXT_WIDTH * TEXT_HEIGHT * sizeof(uint32_t));
@@ -18,7 +20,7 @@ int textures_load(TextureManager *tm) {
     }
   }
 
-  loadTextures(tm, TEXT_WIDTH, TEXT_HEIGHT);
+  loadArrays(tm, TEXT_WIDTH, TEXT_HEIGHT);
   return 0;
 }
 
@@ -55,30 +57,44 @@ void loadImage(uint32_t *texture, int width, int height, const char *filename) {
   printf("Loaded texture: %s\n", filename);
 }
 
-void loadTextures(TextureManager *tm, int texWidth, int texHeight) {
-  const char *texture_files[NUM_TEXTURES] = {
-      // walls
-      "assets/textures/sides/eagle.png",       // 0
-      "assets/textures/sides/redbrick.png",    // 1
-      "assets/textures/sides/purplestone.png", // 2
-      "assets/textures/sides/greystone.png",   // 3
-      "assets/textures/sides/bluestone.png",   // 4
-      "assets/textures/sides/mossy.png",       // 5
-      "assets/textures/sides/wood.png",        // 6
-      "assets/textures/sides/colorstone.png",  // 7
+void loadArrays(TextureManager *tm, int texWidth, int texHeight) {
+  int index = 0;
 
-      // decorations
-      "assets/textures/decorations/pillar.png",     // 8
-      "assets/textures/decorations/barrel.png",     // 9
-      "assets/textures/decorations/greenlight.png", // 10
+  // Load wall textures
+  for (int i = 0; i < NUM_WALL_TEXTURES; i++)
+    loadImage(tm->textures[index + i], texWidth, texHeight,
+              wallTextures[i].path);
+  index += NUM_WALL_TEXTURES;
 
-      // entities
-      "assets/textures/entities/money.png", // 11
-  };
+  // Load decoration textures
+  for (int i = 0; i < NUM_DECOR_TEXTURES; i++)
+    loadImage(tm->textures[index + i], texWidth, texHeight,
+              decorTextures[i].path);
+  index += NUM_DECOR_TEXTURES;
 
-  for (int i = 0; i < NUM_TEXTURES; i++) {
-    loadImage(tm->textures[i], texWidth, texHeight, texture_files[i]);
-  }
+  // Load entity textures
+  for (int i = 0; i < NUM_ENTITY_TEXTURES; i++)
+    loadImage(tm->textures[index + i], texWidth, texHeight,
+              entityTextures[i].path);
 
   printf("Textures loaded...\n");
+}
+
+int getTextureIndexByName(const char *name) {
+  // Check walls
+  for (int i = 0; i < NUM_WALL_TEXTURES; i++)
+    if (strcmp(wallTextures[i].name, name) == 0)
+      return i;
+
+  // Check decorations
+  for (int i = 0; i < NUM_DECOR_TEXTURES; i++)
+    if (strcmp(decorTextures[i].name, name) == 0)
+      return NUM_WALL_TEXTURES + i;
+
+  // Check entities
+  for (int i = 0; i < NUM_ENTITY_TEXTURES; i++)
+    if (strcmp(entityTextures[i].name, name) == 0)
+      return NUM_WALL_TEXTURES + NUM_DECOR_TEXTURES + i;
+
+  return -1; // not found
 }

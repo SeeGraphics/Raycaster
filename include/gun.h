@@ -1,12 +1,13 @@
 #ifndef GUN_H
 #define GUN_H
+
 #include "graphics.h"
 
 #define SHOTGUN_SHOOT_FRAMES 8
 #define SHOTGUN_RELOAD_FRAMES 9
 
 extern SDL_Texture *gunTextures[SHOTGUN_SHOOT_FRAMES];
-extern SDL_Texture *reloadTextures[SHOTGUN_RELOAD_FRAMES];
+extern SDL_Texture *reloadArrays[SHOTGUN_RELOAD_FRAMES];
 
 typedef struct {
   int currentFrame;

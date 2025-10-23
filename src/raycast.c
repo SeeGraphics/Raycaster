@@ -90,7 +90,7 @@ void perform_raycasting(Engine *engine) {
       texPos += step;
 
       uint32_t color =
-          engine->textures.textures[texNum][TEXT_WIDTH * texY + texX];
+          engine->textures.textures[texNum][texY * TEXT_WIDTH + texX];
 
       if (side == 1)
         color = (color >> 1) & 8355711;

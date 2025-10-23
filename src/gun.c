@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 SDL_Texture *gunTextures[SHOTGUN_SHOOT_FRAMES] = {NULL};
-SDL_Texture *reloadTextures[SHOTGUN_RELOAD_FRAMES] = {NULL};
+SDL_Texture *reloadArrays[SHOTGUN_RELOAD_FRAMES] = {NULL};
 
 GunAnim createGunAnim() {
   GunAnim g = {0, 0.10, 0.0, 0, gunTextures, SHOTGUN_SHOOT_FRAMES};
@@ -54,8 +54,8 @@ void loadAllTextures_Shotgun_reload(SDL_Renderer *renderer) {
   for (int i = 0; i < SHOTGUN_RELOAD_FRAMES; i++) {
     snprintf(filePath, sizeof(filePath),
              "assets/textures/weapons/shotgun/reload/%d.png", i);
-    reloadTextures[i] = loadGunTexture(renderer, filePath);
-    if (!reloadTextures[i]) {
+    reloadArrays[i] = loadGunTexture(renderer, filePath);
+    if (!reloadArrays[i]) {
       fprintf(stderr, "Failed to load gun reload frame %d!\n", i);
     }
   }

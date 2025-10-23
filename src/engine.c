@@ -1,8 +1,10 @@
 #include "engine.h"
-#include "gun.h"
 #include "sound.h"
 
 int engine_init(Engine *engine) {
+
+  engine->game = createGame();
+
   // SDL + TTF
   if (SDL_initialize(&engine->game))
     return 1;
@@ -12,12 +14,11 @@ int engine_init(Engine *engine) {
     return 1;
 
   // Initialize objects inside engine
-  engine->game = createGame();
   engine->player = createPlayer();
   engine->textures = createTextures();
   engine->sound = createSound();
   engine->sprites = createSprite();
-  engine->gunAnim = createGunAnim();
+  engine->animation = createAnimation();
   engine->font = font_init();
 
   // Initialize Time variables
@@ -26,13 +27,17 @@ int engine_init(Engine *engine) {
   engine->deltaTime = 0;
   engine->fps = 0;
 
-  // Allocate buffers, load textures, load gun animations
+  // Allocate buffers, load textures, animations
   buffers_init(&engine->game);
   textures_load(&engine->textures);
-  loadAllTextures_Shotgun_shoot(engine->game.renderer);
-  loadAllTextures_Shotgun_reload(engine->game.renderer);
   loadSounds(&engine->sound);
+  loadAllAnimations(engine->game.renderer);
 
+  for (int i = 0; i < NUM_TEXTURES; i++) {
+    if (!engine->textures.textures[i]) {
+      fprintf(stderr, "[WARNING] textures[%d] is NULL!\n", i);
+    }
+  }
   // FPS Mouse
   SDL_SetRelativeMouseMode(SDL_TRUE);
 
@@ -47,18 +52,14 @@ void engine_updateTime(Engine *engine) {
 }
 
 void engine_cleanup(Engine *engine, int exitCode) {
-  // Free game buffers
-  if (engine->game.buffer) {
-    free(engine->game.buffer);
-    engine->game.buffer = NULL;
-  }
+  printf("[CLEANUP] Starting engine cleanup...\n");
 
-  if (engine->game.Zbuffer) {
-    free(engine->game.Zbuffer);
-    engine->game.Zbuffer = NULL;
-  }
+  // 1️⃣ Cleanup animation textures first (they rely on the renderer)
+  printf("[CLEANUP] Destroying animations...\n");
+  cleanupAnimations();
 
-  // Free textures
+  // 2️⃣ Free engine textures
+  printf("[CLEANUP] Freeing textures...\n");
   for (int i = 0; i < NUM_TEXTURES; i++) {
     if (engine->textures.textures[i]) {
       free(engine->textures.textures[i]);
@@ -66,19 +67,12 @@ void engine_cleanup(Engine *engine, int exitCode) {
     }
   }
 
-  // Free sprites if dynamically allocated
-  if (engine->sprites) {
-    free(engine->sprites);
-    engine->sprites = NULL;
-  }
-
-  // Cleanup gun textures
-  cleanupGunTextures();
-
-  // Cleanup sound manager
+  // 3️⃣ Cleanup sound manager
+  printf("[CLEANUP] Cleaning up sound...\n");
   cleanupSound(&engine->sound);
 
-  // Cleanup fonts
+  // 4️⃣ Cleanup fonts
+  printf("[CLEANUP] Closing fonts...\n");
   if (engine->font.debug) {
     TTF_CloseFont(engine->font.debug);
     engine->font.debug = NULL;
@@ -92,6 +86,34 @@ void engine_cleanup(Engine *engine, int exitCode) {
     engine->font.title = NULL;
   }
 
-  // Quit SDL
-  SDL_cleanup(&engine->game, exitCode);
+  // 5️⃣ Destroy SDL objects last
+  printf("[CLEANUP] Destroying SDL renderer, window, and texture...\n");
+  if (engine->game.renderer) {
+    SDL_DestroyRenderer(engine->game.renderer);
+    engine->game.renderer = NULL;
+  }
+  if (engine->game.screen_texture) {
+    SDL_DestroyTexture(engine->game.screen_texture);
+    engine->game.screen_texture = NULL;
+  }
+  if (engine->game.window) {
+    SDL_DestroyWindow(engine->game.window);
+    engine->game.window = NULL;
+  }
+
+  SDL_Quit();
+
+  // 6️⃣ Free buffers and Zbuffer
+  printf("[CLEANUP] Freeing game buffers...\n");
+  if (engine->game.buffer) {
+    free(engine->game.buffer);
+    engine->game.buffer = NULL;
+  }
+  if (engine->game.Zbuffer) {
+    free(engine->game.Zbuffer);
+    engine->game.Zbuffer = NULL;
+  }
+
+  printf("[CLEANUP] Engine cleanup complete. Exiting.\n");
+  exit(exitCode);
 }

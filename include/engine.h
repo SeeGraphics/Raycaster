@@ -1,9 +1,9 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
+#include "animation.h"
 #include "font.h"
 #include "graphics.h"
-#include "gun.h"
 #include "player.h"
 #include "sound.h"
 #include "sprites.h"
@@ -16,7 +16,7 @@ typedef struct Engine {
   TextureManager textures;
   SoundManager sound;
   Sprite *sprites;
-  GunAnim gunAnim;
+  Animation animation;
   Font font;
 
   // Time tracking

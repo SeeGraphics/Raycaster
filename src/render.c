@@ -29,7 +29,15 @@ void drawScene(Engine *engine) {
   /* 2. Draw Game */
   perform_floorcasting(engine);
   perform_raycasting(engine);
+
+  if (!engine->game.buffer) {
+    fprintf(stderr, "[ERROR] game.buffer is NULL!\n");
+  }
+  if (!engine->game.Zbuffer) {
+    fprintf(stderr, "[ERROR] game.Zbuffer is NULL!\n");
+  }
   perform_spritecasting(engine);
   drawBuffer(&engine->game);
+  drawCurrentAnimation(&engine->game, &engine->animation, 0.4f, 0.6f, 0.3, 0.4);
   drawHud(engine);
 }

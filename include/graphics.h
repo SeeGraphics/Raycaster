@@ -7,6 +7,10 @@
 #define WINDOW_HEIGHT 800
 #define TITLE "Raycaster"
 
+// render to small internal Res
+#define RENDER_WIDTH 800
+#define RENDER_HEIGHT 400
+
 // colors
 #define RGB_Red ((SDL_Color){255, 0, 0, 255})
 #define RGB_Green ((SDL_Color){0, 255, 0, 255})
@@ -25,6 +29,7 @@ typedef struct {
   int window_width;
   int window_height;
   uint32_t *buffer;
+  uint32_t *Rbuffer;
   double *Zbuffer;
 } Game;
 

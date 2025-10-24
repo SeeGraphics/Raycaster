@@ -4,7 +4,8 @@
 #include <stdlib.h>
 
 Game createGame() {
-  Game g = {NULL, NULL, NULL, TITLE, WINDOW_WIDTH, WINDOW_HEIGHT, NULL, NULL};
+  Game g = {NULL,          NULL, NULL, TITLE, WINDOW_WIDTH,
+            WINDOW_HEIGHT, NULL, NULL, NULL};
   return g;
 }
 
@@ -17,8 +18,15 @@ int buffers_reallocate(Game *game) {
     SDL_cleanup(game, EXIT_FAILURE);
     return 1;
   }
+  free(game->Rbuffer);
+  game->Rbuffer = malloc(RENDER_WIDTH * RENDER_HEIGHT * sizeof(uint32_t));
+  if (!game->Rbuffer) {
+    fprintf(stderr, "[ERROR] Couldn't allocate Rbuffer");
+    SDL_cleanup(game, EXIT_FAILURE);
+    return 1;
+  }
   free(game->Zbuffer);
-  game->Zbuffer = malloc(game->window_width * sizeof(double));
+  game->Zbuffer = malloc(RENDER_WIDTH * sizeof(double));
   if (!game->Zbuffer) {
     fprintf(stderr, "[ERROR] Couldn't allocate Zbuffer");
     SDL_cleanup(game, EXIT_FAILURE);
@@ -28,9 +36,15 @@ int buffers_reallocate(Game *game) {
 }
 
 void clearBuffer(Game *game) {
-  if (!game || !game->buffer) {
+  if (!game || !game->buffer || !game->Rbuffer) {
     fprintf(stderr, "[ERROR] clearBuffer called with NULL buffer!\n");
     return;
+  }
+
+  for (int y = 0; y < RENDER_HEIGHT; y++) {
+    for (int x = 0; x < RENDER_WIDTH; x++) {
+      game->Rbuffer[y * RENDER_WIDTH + x] = 0;
+    }
   }
 
   for (int y = 0; y < game->window_height; y++) {
@@ -49,8 +63,17 @@ int buffers_init(Game *game) {
     SDL_cleanup(game, EXIT_FAILURE);
     return 1;
   }
+
+  // renderBuffer for performance
+  game->Rbuffer = malloc(RENDER_WIDTH * RENDER_HEIGHT * sizeof(uint32_t));
+  if (!game->Rbuffer) {
+    fprintf(stderr, "[ERROR] Couldn't allocate Rbuffer");
+    SDL_cleanup(game, EXIT_FAILURE);
+    return 1;
+  }
+
   // Z-index for sprites...
-  game->Zbuffer = malloc(game->window_width * sizeof(double));
+  game->Zbuffer = malloc(RENDER_WIDTH * sizeof(double));
   if (!game->Zbuffer) {
     fprintf(stderr, "[ERROR] Couldn't allocate Zbuffer");
     SDL_cleanup(game, EXIT_FAILURE);
@@ -86,11 +109,11 @@ int SDL_initialize(Game *game) {
     return 1;
   }
 
-  // Create texture for buffer
+  // Create texture for buffer at window size (NOT RENDER SIZE)
   game->screen_texture = SDL_CreateTexture(
       game->renderer,
       SDL_PIXELFORMAT_ARGB8888, // 32-bit color format
-      SDL_TEXTUREACCESS_STREAMING, game->window_width, game->window_height);
+      SDL_TEXTUREACCESS_STREAMING, RENDER_WIDTH, RENDER_HEIGHT);
 
   if (!game->screen_texture) {
     fprintf(stderr, "[ERROR] Failed to create texture: %s\n", SDL_GetError());
@@ -125,13 +148,17 @@ int SDL_cleanup(Game *game, int exit_status) {
 
 void drawBuffer(Game *game) {
   // Update texture with buffer data
-  SDL_UpdateTexture(
-      game->screen_texture,
-      NULL, // Update entire texture
-      game->buffer,
-      game->window_width * sizeof(uint32_t) // Pitch (bytes per row)
+  SDL_UpdateTexture(game->screen_texture,
+                    NULL, // Update entire texture
+                    game->Rbuffer,
+                    RENDER_WIDTH * sizeof(uint32_t) // Pitch (bytes per row)
   );
 
-  // Copy texture to renderer
-  SDL_RenderCopy(game->renderer, game->screen_texture, NULL, NULL);
+  /* Here we use Rbuffer (low res) to create the texture, then create a
+   * rectangle and the top left of the screen (0, 0) and with the size of
+   * whatever the windows size currently is then copy the texture to the screen.
+   * By passing in a Rect, SDL will automatically scale the texture to the Rect
+   * which has the size of the window */
+  SDL_Rect dstRect = {0, 0, game->window_width, game->window_height};
+  SDL_RenderCopy(game->renderer, game->screen_texture, NULL, &dstRect);
 }

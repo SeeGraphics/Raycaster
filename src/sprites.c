@@ -66,27 +66,26 @@ void perform_spritecasting(Engine *engine) {
                   engine->player.planeX * spriteY); // depth inside screen
 
     int spriteScreenX =
-        (int)((engine->game.window_width / 2) * (1 + transformX / transformY));
+        (int)((RENDER_WIDTH / 2) * (1 + transformX / transformY));
 
     // calculate height of the sprite on screen
-    int spriteHeight = fabs((int)engine->game.window_height / transformY);
-    int drawStartY = -spriteHeight / 2 + engine->game.window_height / 2 +
-                     engine->player.pitch;
+    int spriteHeight = fabs((int)RENDER_HEIGHT / transformY);
+    int drawStartY =
+        -spriteHeight / 2 + RENDER_HEIGHT / 2 + engine->player.pitch;
     if (drawStartY < 0)
       drawStartY = 0;
-    int drawEndY = spriteHeight / 2 + engine->game.window_height / 2 +
-                   engine->player.pitch;
-    if (drawEndY >= engine->game.window_height)
-      drawEndY = engine->game.window_height - 1;
+    int drawEndY = spriteHeight / 2 + RENDER_HEIGHT / 2 + engine->player.pitch;
+    if (drawEndY >= RENDER_HEIGHT)
+      drawEndY = RENDER_HEIGHT - 1;
 
     // calculate width of the sprite
-    int spriteWidth = fabs((int)engine->game.window_height / transformY);
+    int spriteWidth = fabs((int)RENDER_HEIGHT / transformY);
     int drawStartX = -spriteWidth / 2 + spriteScreenX;
     if (drawStartX < 0)
       drawStartX = 0;
     int drawEndX = spriteWidth / 2 + spriteScreenX;
-    if (drawEndX >= engine->game.window_width)
-      drawEndX = engine->game.window_width - 1;
+    if (drawEndX >= RENDER_WIDTH)
+      drawEndX = RENDER_WIDTH - 1;
 
     // loop through every vertical stripe of the sprite on screen
     for (int stripe = drawStartX; stripe < drawEndX; stripe++) {
@@ -95,17 +94,22 @@ void perform_spritecasting(Engine *engine) {
                  256;
 
       // visibility checks
-      if (transformY > 0 && stripe >= 0 && stripe < engine->game.window_width &&
+      if (transformY > 0 && stripe >= 0 && stripe < RENDER_WIDTH &&
           transformY < engine->game.Zbuffer[stripe]) {
 
         for (int y = drawStartY; y < drawEndY; y++) {
-          int d = (y - engine->player.pitch) * 256 -
-                  engine->game.window_height * 128 + spriteHeight * 128;
+          int d = (y - engine->player.pitch) * 256 - RENDER_HEIGHT * 128 +
+                  spriteHeight * 128;
           int texY = ((d * TEXT_HEIGHT) / spriteHeight) / 256;
 
           int texIndex = engine->sprites[spriteOrder[i]].texture;
           if (texIndex < 0 || texIndex >= NUM_TEXTURES)
             continue;
+
+          // Wrap texture coordinates with bitmask: x & (64-1) == x % 64
+          // Works only because texture size (64) is a power of two
+          texX &= (TEXT_WIDTH - 1);
+          texY &= (TEXT_HEIGHT - 1);
 
           Uint32 color =
               engine->textures.textures[texIndex][TEXT_WIDTH * texY + texX];
@@ -122,7 +126,7 @@ void perform_spritecasting(Engine *engine) {
 
           // draw pixel if not transparent
           if ((color & 0x00FFFFFF) != 0)
-            engine->game.buffer[y * engine->game.window_width + stripe] = color;
+            engine->game.Rbuffer[y * RENDER_WIDTH + stripe] = color;
         }
       }
     }

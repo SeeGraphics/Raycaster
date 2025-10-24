@@ -103,11 +103,15 @@ void engine_cleanup(Engine *engine, int exitCode) {
 
   SDL_Quit();
 
-  // 6️⃣ Free buffers and Zbuffer
+  // 6️⃣ Free buffes
   printf("[CLEANUP] Freeing game buffers...\n");
   if (engine->game.buffer) {
     free(engine->game.buffer);
     engine->game.buffer = NULL;
+  }
+  if (engine->game.Rbuffer) {
+    free(engine->game.Rbuffer);
+    engine->game.Rbuffer = NULL;
   }
   if (engine->game.Zbuffer) {
     free(engine->game.Zbuffer);

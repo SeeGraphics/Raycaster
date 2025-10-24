@@ -33,6 +33,9 @@ void drawScene(Engine *engine) {
   if (!engine->game.buffer) {
     fprintf(stderr, "[ERROR] game.buffer is NULL!\n");
   }
+  if (!engine->game.Rbuffer) {
+    fprintf(stderr, "[ERROR] game.Rbuffer is NULL!\n");
+  }
   if (!engine->game.Zbuffer) {
     fprintf(stderr, "[ERROR] game.Zbuffer is NULL!\n");
   }

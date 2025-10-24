@@ -1,6 +1,8 @@
 #include "input.h"
 #include "animation.h"
 
+int mouseUngrabbed = 0;
+
 int handleInput(Engine *engine, double deltaTime) {
   SDL_Event event;
 
@@ -29,8 +31,7 @@ int handleInput(Engine *engine, double deltaTime) {
 
       engine->game.screen_texture = SDL_CreateTexture(
           engine->game.renderer, SDL_PIXELFORMAT_ARGB8888,
-          SDL_TEXTUREACCESS_STREAMING, engine->game.window_width,
-          engine->game.window_height);
+          SDL_TEXTUREACCESS_STREAMING, RENDER_WIDTH, RENDER_HEIGHT);
 
       if (!engine->game.screen_texture) {
         fprintf(stderr, "[ERROR] Failed to recreate texture: %s\n",
@@ -58,6 +59,16 @@ int handleInput(Engine *engine, double deltaTime) {
       if (event.key.keysym.scancode == CLOSE_GAME_ESC) {
         engine_cleanup(engine, EXIT_SUCCESS);
         return 1;
+      }
+
+      // ungrab Mouse
+      if (event.key.keysym.scancode == UNGRAB_MOUSE && mouseUngrabbed == 0) {
+        SDL_SetRelativeMouseMode(SDL_FALSE);
+        mouseUngrabbed = 1;
+      } else if (event.key.keysym.scancode == UNGRAB_MOUSE &&
+                 mouseUngrabbed == 1) {
+        SDL_SetRelativeMouseMode(SDL_TRUE);
+        mouseUngrabbed = 0;
       }
 
       // Reload
@@ -95,19 +106,6 @@ int handleInput(Engine *engine, double deltaTime) {
 
   /* CONTINUOUS INPUT (held keys) */
   const Uint8 *state = SDL_GetKeyboardState(NULL);
-
-  // Toggle mouse mode
-  if (state[SDL_SCANCODE_Q]) {
-    static bool lastQState = false;
-    if (!lastQState) { // Only toggle on press, not hold
-      bool mouseMode = SDL_GetRelativeMouseMode();
-      SDL_SetRelativeMouseMode(!mouseMode);
-    }
-    lastQState = true;
-  } else {
-    static bool lastQState = false;
-    lastQState = false;
-  }
 
   // Movement
   if (state[SDL_SCANCODE_W] || state[SDL_SCANCODE_UP])

@@ -3,8 +3,8 @@
 #include "map.h"
 
 void perform_raycasting(Engine *engine) {
-  for (int x = 0; x < engine->game.window_width; x++) {
-    double cameraX = 2 * x / (double)engine->game.window_width - 1;
+  for (int x = 0; x < RENDER_WIDTH; x++) {
+    double cameraX = 2 * x / (double)RENDER_WIDTH - 1;
     double rayDirX = engine->player.dirX + engine->player.planeX * cameraX;
     double rayDirY = engine->player.dirY + engine->player.planeY * cameraX;
 
@@ -46,17 +46,17 @@ void perform_raycasting(Engine *engine) {
 
     double perpWallDist =
         (side == 0) ? sideDistX - deltaDistX : sideDistY - deltaDistY;
-    int lineHeight = (int)(engine->game.window_height / perpWallDist);
+    int lineHeight = (int)(RENDER_HEIGHT / perpWallDist);
 
-    int drawStart = -lineHeight / 2 + engine->game.window_height / 2 +
-                    (int)engine->player.pitch;
+    int drawStart =
+        -lineHeight / 2 + RENDER_HEIGHT / 2 + (int)engine->player.pitch;
     if (drawStart < 0)
       drawStart = 0;
 
-    int drawEnd = lineHeight / 2 + engine->game.window_height / 2 +
-                  (int)engine->player.pitch;
-    if (drawEnd >= engine->game.window_height)
-      drawEnd = engine->game.window_height - 1;
+    int drawEnd =
+        lineHeight / 2 + RENDER_HEIGHT / 2 + (int)engine->player.pitch;
+    if (drawEnd >= RENDER_HEIGHT)
+      drawEnd = RENDER_HEIGHT - 1;
 
     // texturing math
     int texNum = worldMap[mapX][mapY] - 1;
@@ -80,8 +80,8 @@ void perform_raycasting(Engine *engine) {
     double step = 1.0 * TEXT_HEIGHT / lineHeight;
 
     // Starting texture coordinate
-    double texPos = (drawStart - (int)engine->player.pitch -
-                     engine->game.window_height / 2 + lineHeight / 2) *
+    double texPos = (drawStart - (int)engine->player.pitch - RENDER_HEIGHT / 2 +
+                     lineHeight / 2) *
                     step;
 
     // Draw the textured vertical line
@@ -95,7 +95,7 @@ void perform_raycasting(Engine *engine) {
       if (side == 1)
         color = (color >> 1) & 8355711;
 
-      engine->game.buffer[y * engine->game.window_width + x] = color;
+      engine->game.Rbuffer[y * RENDER_WIDTH + x] = color;
     }
     // set z-buffer for sprites
     engine->game.Zbuffer[x] = perpWallDist;
@@ -104,7 +104,7 @@ void perform_raycasting(Engine *engine) {
 
 void perform_floorcasting(Engine *engine) {
   // FLOOR CASTING
-  for (int y = 0; y < engine->game.window_height; y++) {
+  for (int y = 0; y < RENDER_HEIGHT; y++) {
     // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
     float rayDirX0 = engine->player.dirX - engine->player.planeX;
     float rayDirY0 = engine->player.dirY - engine->player.planeY;
@@ -112,27 +112,25 @@ void perform_floorcasting(Engine *engine) {
     float rayDirY1 = engine->player.dirY + engine->player.planeY;
 
     // Current y position compared to the center of the screen (the horizon)
-    int p = y - (int)engine->player.pitch - engine->game.window_height / 2;
+    int p = y - (int)engine->player.pitch - RENDER_HEIGHT / 2;
     if (p == 0)
       continue;
 
     // Vertical position of the camera
-    float posZ = 0.5 * engine->game.window_height;
+    float posZ = 0.5 * RENDER_HEIGHT;
 
     // Horizontal distance from the camera to the floor for the current row
     float rowDistance = posZ / abs(p);
 
     // Calculate the real world step vector
-    float floorStepX =
-        rowDistance * (rayDirX1 - rayDirX0) / engine->game.window_width;
-    float floorStepY =
-        rowDistance * (rayDirY1 - rayDirY0) / engine->game.window_width;
+    float floorStepX = rowDistance * (rayDirX1 - rayDirX0) / RENDER_WIDTH;
+    float floorStepY = rowDistance * (rayDirY1 - rayDirY0) / RENDER_WIDTH;
 
     // Real world coordinates of the leftmost column
     float floorX = engine->player.posX + rowDistance * rayDirX0;
     float floorY = engine->player.posY + rowDistance * rayDirY0;
 
-    for (int x = 0; x < engine->game.window_width; ++x) {
+    for (int x = 0; x < RENDER_WIDTH; ++x) {
       // Get cell coordinates
       int cellX = (int)(floorX);
       int cellY = (int)(floorY);
@@ -153,12 +151,12 @@ void perform_floorcasting(Engine *engine) {
         // Floor (below horizon)
         color = engine->textures.textures[floorTexture][TEXT_WIDTH * ty + tx];
         color = (color >> 1) & 8355711;
-        engine->game.buffer[y * engine->game.window_width + x] = color;
+        engine->game.Rbuffer[y * RENDER_WIDTH + x] = color;
       } else {
         // Ceiling (above horizon)
         color = engine->textures.textures[ceilingTexture][TEXT_WIDTH * ty + tx];
         color = (color >> 1) & 8355711;
-        engine->game.buffer[y * engine->game.window_width + x] = color;
+        engine->game.Rbuffer[y * RENDER_WIDTH + x] = color;
       }
     }
   }

@@ -20,6 +20,7 @@ int engine_init(Engine *engine) {
   engine->sprites = createSprite();
   engine->animation = createAnimation();
   engine->font = font_init();
+  engine->game.crosshair = loadCrosshair(&engine->game);
 
   // Initialize Time variables
   engine->time = SDL_GetTicks();
@@ -89,6 +90,8 @@ void engine_cleanup(Engine *engine, int exitCode) {
     TTF_CloseFont(engine->font.title);
     engine->font.title = NULL;
   }
+
+  SDL_DestroyTexture(engine->game.crosshair);
 
   // 5️⃣ Destroy SDL objects last
   printf("[CLEANUP] Destroying SDL renderer, window, and texture...\n");

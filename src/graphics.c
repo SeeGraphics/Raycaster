@@ -5,7 +5,7 @@
 
 Game createGame() {
   Game g = {NULL,          NULL, NULL, TITLE, WINDOW_WIDTH,
-            WINDOW_HEIGHT, NULL, NULL, NULL};
+            WINDOW_HEIGHT, NULL, NULL, NULL,  NULL};
   return g;
 }
 

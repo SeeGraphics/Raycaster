@@ -28,6 +28,7 @@ typedef struct {
   char *title;
   int window_width;
   int window_height;
+  SDL_Texture *crosshair;
   uint32_t *buffer;
   uint32_t *Rbuffer;
   double *Zbuffer;

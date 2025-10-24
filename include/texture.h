@@ -1,6 +1,7 @@
 #ifndef TEXTURE_H
 #define TEXTURE_H
 
+#include "graphics.h"
 #include <stdint.h>
 
 // texture size
@@ -44,6 +45,8 @@ static const TextureInfo entityTextures[NUM_ENTITY_TEXTURES] = {
 
 // init
 TextureManager createTextures();
+SDL_Texture *loadCrosshair(Game *game);
+void drawCrosshair(Game *game);
 int textures_load(TextureManager *tm);
 
 // loading

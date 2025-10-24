@@ -1,4 +1,5 @@
 #include "texture.h"
+#include "graphics.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <stdio.h>
@@ -7,6 +8,28 @@
 TextureManager createTextures() {
   TextureManager t = {NULL};
   return t;
+}
+
+SDL_Texture *loadCrosshair(Game *game) {
+  SDL_Surface *crosshair = IMG_Load("assets/crosshair1.png");
+  if (!crosshair)
+    printf("[ERROR] Couldn't load crosshair surface");
+
+  SDL_Texture *crosshair_texture =
+      SDL_CreateTextureFromSurface(game->renderer, crosshair);
+
+  if (!crosshair_texture)
+    printf("[ERROR] Couldn't load crosshair texture");
+  SDL_FreeSurface(crosshair);
+
+  return crosshair_texture;
+}
+
+void drawCrosshair(Game *game) {
+
+  SDL_Rect dstRect = {game->window_width / 2 - 20, game->window_height / 2 - 20,
+                      20, 20};
+  SDL_RenderCopy(game->renderer, game->crosshair, NULL, &dstRect);
 }
 
 // allocate textures when running

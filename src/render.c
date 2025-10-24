@@ -1,5 +1,6 @@
 #include "engine.h"
 #include "raycast.h"
+#include "texture.h"
 
 void drawHud(Engine *engine) {
   // if fps doenst work, just do :  int fps = (engine->deltaTime > 0) ?
@@ -23,6 +24,7 @@ void drawHud(Engine *engine) {
 }
 
 void drawScene(Engine *engine) {
+
   /* 1. Clear Buffer */
   clearBuffer(&engine->game);
 
@@ -43,4 +45,5 @@ void drawScene(Engine *engine) {
   drawBuffer(&engine->game);
   drawCurrentAnimation(&engine->game, &engine->animation, 0.4f, 0.6f, 0.3, 0.4);
   drawHud(engine);
+  drawCrosshair(&engine->game);
 }

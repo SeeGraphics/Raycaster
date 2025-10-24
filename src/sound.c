@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 SoundManager createSound() {
-  SoundManager s = {NULL, NULL};
+  SoundManager s = {NULL, NULL, NULL};
   return s;
 }
 
@@ -18,18 +18,37 @@ int initSound() {
 Mix_Chunk *loadSound(const char *path) {
   Mix_Chunk *sound = Mix_LoadWAV(path);
   if (!sound) {
-    printf("[ERROR] Failed to load %s: %s\n", path, Mix_GetError());
+    fprintf(stderr, "[ERROR] Failed to load %s: %s\n", path, Mix_GetError());
   } else {
-    printf("[ERROR] Loaded sound: %s\n", path);
+    fprintf(stderr, "[ERROR] Loaded sound: %s\n", path);
   }
   return sound;
+}
+
+Mix_Music *loadTrack(const char *path) {
+  Mix_Music *track = Mix_LoadMUS(path);
+  if (!track) {
+    fprintf(stderr, "[ERROR] Failed to track %s: %s\n", path, Mix_GetError());
+  } else {
+    fprintf(stderr, "[ERROR] Loaded track: %s\n", path);
+  }
+  return track;
 }
 
 void loadSounds(SoundManager *soundManager) {
   soundManager->ShotgunShot = loadSound("assets/sounds/shotgun_shoot.mp3");
   soundManager->ShotgunReload = loadSound("assets/sounds/shotgun_reload.mp3");
 
+  Mix_Volume(-1, SFX_VOL);
   printf("[SOUND] Sounds loaded...\n");
+}
+
+void loadMusic(SoundManager *soundManager) {
+  soundManager->Soundtrack_intense =
+      loadTrack("assets/sounds/Soundtrack_intense.mp3");
+
+  Mix_VolumeMusic(MUSIC_VOL);
+  printf("[SOUND] Tracks loaded...\n");
 }
 
 void playShotgunShot(SoundManager *soundManager) {
@@ -41,6 +60,12 @@ void playShotgunShot(SoundManager *soundManager) {
 void playShotgunReload(SoundManager *soundManager) {
   if (soundManager->ShotgunReload) {
     Mix_PlayChannel(-1, soundManager->ShotgunReload, 0);
+  }
+}
+
+void playTrackIntense(SoundManager *soundManager) {
+  if (soundManager->Soundtrack_intense) {
+    Mix_PlayMusic(soundManager->Soundtrack_intense, -1);
   }
 }
 

@@ -6,10 +6,12 @@
 /* FRAME COUNTS */
 #define SHOTGUN_SHOOT_FRAMES 8
 #define SHOTGUN_RELOAD_FRAMES 9
+#define DEMON_WALK_FRAMES 4
 
 /* ANIMATIONS */
 extern SDL_Texture *shotgun_shoot[SHOTGUN_SHOOT_FRAMES];
 extern SDL_Texture *shotgun_reload[SHOTGUN_RELOAD_FRAMES];
+extern SDL_Texture *demon_walk[DEMON_WALK_FRAMES];
 
 typedef enum {
   ANIM_SHOTGUN_IDLE,

@@ -6,6 +6,7 @@
 
 SDL_Texture *shotgun_shoot[SHOTGUN_SHOOT_FRAMES] = {NULL};
 SDL_Texture *shotgun_reload[SHOTGUN_RELOAD_FRAMES] = {NULL};
+SDL_Texture *demon_walk[DEMON_WALK_FRAMES] = {NULL};
 
 /* INIT */
 Animation createAnimation() {
@@ -104,7 +105,7 @@ SDL_Texture *loadTexture(SDL_Renderer *renderer, const char *filePath) {
 }
 
 void loadAllAnimations(SDL_Renderer *renderer) {
-  char filePath[256];
+  char filePath[1028];
 
   // Load shoot frames
   for (int i = 0; i < SHOTGUN_SHOOT_FRAMES; i++) {

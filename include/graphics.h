@@ -8,8 +8,8 @@
 #define TITLE "Raycaster"
 
 // render to small internal Res
-#define RENDER_WIDTH 800
-#define RENDER_HEIGHT 400
+#define RENDER_WIDTH 600
+#define RENDER_HEIGHT 300
 
 // colors
 #define RGB_Red ((SDL_Color){255, 0, 0, 255})

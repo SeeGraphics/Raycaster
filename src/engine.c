@@ -31,7 +31,11 @@ int engine_init(Engine *engine) {
   buffers_init(&engine->game);
   textures_load(&engine->textures);
   loadSounds(&engine->sound);
+  loadMusic(&engine->sound);
   loadAllAnimations(engine->game.renderer);
+
+  // play background track (currently Soundtrack_intense)
+  playTrackIntense(&engine->sound);
 
   for (int i = 0; i < NUM_TEXTURES; i++) {
     if (!engine->textures.textures[i]) {

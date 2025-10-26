@@ -18,9 +18,7 @@ int engine_init(Engine *engine) {
   engine->textures = createTextures();
   engine->sound = createSound();
   engine->sprites = createSprite();
-  engine->animation = createAnimation();
   engine->font = font_init();
-  engine->game.crosshair = loadCrosshair(&engine->game);
 
   // Initialize Time variables
   engine->time = SDL_GetTicks();
@@ -30,10 +28,10 @@ int engine_init(Engine *engine) {
 
   // Allocate buffers, load textures, animations
   buffers_init(&engine->game);
+  loadAllAnimations();
   textures_load(&engine->textures);
   loadSounds(&engine->sound);
   loadMusic(&engine->sound);
-  loadAllAnimations(engine->game.renderer);
 
   // play background track (currently Soundtrack_intense)
   playTrackIntense(&engine->sound);
@@ -59,11 +57,8 @@ void engine_updateTime(Engine *engine) {
 void engine_cleanup(Engine *engine, int exitCode) {
   printf("[CLEANUP] Starting engine cleanup...\n");
 
-  // 1️⃣ Cleanup animation textures first (they rely on the renderer)
-  printf("[CLEANUP] Destroying animations...\n");
-  cleanupAnimations();
+  freeAllAnimations();
 
-  // 2️⃣ Free engine textures
   printf("[CLEANUP] Freeing textures...\n");
   for (int i = 0; i < NUM_TEXTURES; i++) {
     if (engine->textures.textures[i]) {
@@ -72,11 +67,9 @@ void engine_cleanup(Engine *engine, int exitCode) {
     }
   }
 
-  // 3️⃣ Cleanup sound manager
   printf("[CLEANUP] Cleaning up sound...\n");
   cleanupSound(&engine->sound);
 
-  // 4️⃣ Cleanup fonts
   printf("[CLEANUP] Closing fonts...\n");
   if (engine->font.debug) {
     TTF_CloseFont(engine->font.debug);
@@ -91,9 +84,6 @@ void engine_cleanup(Engine *engine, int exitCode) {
     engine->font.title = NULL;
   }
 
-  SDL_DestroyTexture(engine->game.crosshair);
-
-  // 5️⃣ Destroy SDL objects last
   printf("[CLEANUP] Destroying SDL renderer, window, and texture...\n");
   if (engine->game.renderer) {
     SDL_DestroyRenderer(engine->game.renderer);

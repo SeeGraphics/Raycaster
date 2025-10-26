@@ -1,50 +1,50 @@
 #ifndef ANIMATION_H
 #define ANIMATION_H
-#include "graphics.h"
+
+#include "player.h"
+#include "types.h"
 #include <SDL.h>
 
+#define FRAMETIME_SHOTGUN 0.12
+#define FRAMETIME_ROCKET 0.09
+#define FRAMETIME_PISTOL 0.09
+#define FRAMETIME_HANDS 0.08
+
 /* FRAME COUNTS */
-#define SHOTGUN_SHOOT_FRAMES 8
-#define SHOTGUN_RELOAD_FRAMES 9
-#define DEMON_WALK_FRAMES 4
-
-/* ANIMATIONS */
-extern SDL_Texture *shotgun_shoot[SHOTGUN_SHOOT_FRAMES];
-extern SDL_Texture *shotgun_reload[SHOTGUN_RELOAD_FRAMES];
-extern SDL_Texture *demon_walk[DEMON_WALK_FRAMES];
-
-typedef enum {
-  ANIM_SHOTGUN_IDLE,
-  ANIM_SHOTGUN_SHOOT,
-  ANIM_SHOTGUN_RELOAD
-} AnimationType;
+#define FRAMES_SHOTGUN_SHOOT 3
+#define FRAMES_ROCKET_SHOOT 5
+#define FRAMES_PISTOL_SHOOT 6
+#define FRAMES_HANDS_PUNSH 3
 
 typedef struct {
-  AnimationType currentType;     // Which animation (shoot, reload, idle)
-  int currentFrame;              // Which frame we're on (0 to numFrames-1)
-  double frameTime;              // Seconds per frame
-  double timeAccumulator;        // Time since last frame change
-  int playing;                   // 1 = playing, 0 = idle
-  SDL_Texture **currentTextures; // Pointer to current animation array
-  int numFrames;                 // How many frames in current animation
+  u32 *pixels;
+  int width, height;
+} Frame;
+
+typedef struct {
+  Frame *frames;
+  int frameCount;
+  double frameTime;
+  double timeAccumulator;
+  int currentFrame;
+  int playing;
+  int looping;
 } Animation;
 
-// Init
-Animation createAnimation();
+typedef struct {
+  Animation shotgun_shoot;
+  Animation shotgun_reload;
+  Animation rocket_shoot;
+  Animation pistol_shoot;
+  Animation hands_punsh;
+} AnimationRegistry;
 
-// Update
-void updateAnimation(Animation *anim, double deltaTime);
-void playAnimation(Animation *anim, AnimationType type);
+extern AnimationRegistry animations;
 
-// Loading
-SDL_Texture *loadTexture(SDL_Renderer *renderer, const char *filePath);
-void loadAllAnimations(SDL_Renderer *renderer);
-
-// Rendering
-void drawCurrentAnimation(Game *game, Animation *anim, float widthFactor,
-                          float heightFactor, float posX, float posY);
-
-// Cleanup
-void cleanupAnimations();
+void loadAllAnimations();
+void updateAllAnimations(Player *player, double deltaTime);
+void blitAnimation(u32 *buffer, Animation *animation, float width, float height,
+                   float x, float y, float scale);
+void freeAllAnimations();
 
 #endif

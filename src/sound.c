@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 SoundManager createSound() {
-  SoundManager s = {NULL, NULL, NULL};
+  SoundManager s = {NULL, NULL, NULL, NULL};
   return s;
 }
 
@@ -36,8 +36,15 @@ Mix_Music *loadTrack(const char *path) {
 }
 
 void loadSounds(SoundManager *soundManager) {
-  soundManager->ShotgunShot = loadSound("assets/sounds/shotgun_shoot.mp3");
-  soundManager->ShotgunReload = loadSound("assets/sounds/shotgun_reload.mp3");
+  soundManager->ShotgunShot =
+      loadSound("assets/sounds/weapons/shotgun/shotgun_shoot.mp3");
+  soundManager->ShotgunReload =
+      loadSound("assets/sounds/weapons/shotgun/shotgun_reload.mp3");
+  soundManager->RocketShot =
+      loadSound("assets/sounds/weapons/rocket/rocket_shoot.mp3");
+  soundManager->PistolShot =
+      loadSound("assets/sounds/weapons/pistol/pistol_shoot.mp3");
+  soundManager->HandsPunsh = loadSound("assets/sounds/weapons/hands/punsh.wav");
 
   Mix_Volume(-1, SFX_VOL);
   printf("[SOUND] Sounds loaded...\n");
@@ -45,30 +52,48 @@ void loadSounds(SoundManager *soundManager) {
 
 void loadMusic(SoundManager *soundManager) {
   soundManager->Soundtrack_intense =
-      loadTrack("assets/sounds/Soundtrack_intense.mp3");
+      loadTrack("assets/sounds/music/Soundtrack_intense.mp3");
 
   Mix_VolumeMusic(MUSIC_VOL);
   printf("[SOUND] Tracks loaded...\n");
 }
+
+/* *********** */
+/* PLAY SOUNDS */
+/* *********** */
 
 void playShotgunShot(SoundManager *soundManager) {
   if (soundManager->ShotgunShot) {
     Mix_PlayChannel(-1, soundManager->ShotgunShot, 0);
   }
 }
-
 void playShotgunReload(SoundManager *soundManager) {
   if (soundManager->ShotgunReload) {
     Mix_PlayChannel(-1, soundManager->ShotgunReload, 0);
   }
 }
-
+void playRocketShot(SoundManager *soundManager) {
+  if (soundManager->RocketShot) {
+    Mix_PlayChannel(-1, soundManager->RocketShot, 0);
+  }
+}
+void playPistolShot(SoundManager *soundManager) {
+  if (soundManager->PistolShot) {
+    Mix_PlayChannel(-1, soundManager->PistolShot, 0);
+  }
+}
+void playHandsPunsh(SoundManager *soundManager) {
+  if (soundManager->HandsPunsh) {
+    Mix_PlayChannel(-1, soundManager->HandsPunsh, 0);
+  }
+}
 void playTrackIntense(SoundManager *soundManager) {
   if (soundManager->Soundtrack_intense) {
     Mix_PlayMusic(soundManager->Soundtrack_intense, -1);
   }
 }
 
+/* CLEANUP */
 void cleanupSound(SoundManager *soundManager) {
   if (soundManager->ShotgunShot) {
     Mix_FreeChunk(soundManager->ShotgunShot);

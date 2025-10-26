@@ -1,4 +1,5 @@
 #include "texture.h"
+#include "animation.h"
 #include "graphics.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -10,32 +11,9 @@ TextureManager createTextures() {
   return t;
 }
 
-SDL_Texture *loadCrosshair(Game *game) {
-  SDL_Surface *crosshair = IMG_Load("assets/crosshair1.png");
-  if (!crosshair)
-    printf("[ERROR] Couldn't load crosshair surface");
-
-  SDL_Texture *crosshair_texture =
-      SDL_CreateTextureFromSurface(game->renderer, crosshair);
-
-  if (!crosshair_texture)
-    printf("[ERROR] Couldn't load crosshair texture");
-  SDL_FreeSurface(crosshair);
-
-  return crosshair_texture;
-}
-
-void drawCrosshair(Game *game) {
-
-  SDL_Rect dstRect = {game->window_width / 2 - 20, game->window_height / 2 - 20,
-                      20, 20};
-  SDL_RenderCopy(game->renderer, game->crosshair, NULL, &dstRect);
-}
-
-// allocate textures when running
 int textures_load(TextureManager *tm) {
   for (int i = 0; i < NUM_TEXTURES; i++) {
-    tm->textures[i] = malloc(TEXT_WIDTH * TEXT_HEIGHT * sizeof(uint32_t));
+    tm->textures[i] = malloc(TEXT_WIDTH * TEXT_HEIGHT * sizeof(u32));
     if (!tm->textures[i]) {
       fprintf(stderr, "[ERROR] Couldn't allocate texture %d", i);
       free(tm->textures[i]);
@@ -47,8 +25,7 @@ int textures_load(TextureManager *tm) {
   return 0;
 }
 
-void loadImage(uint32_t *texture, int width, int height, const char *filename) {
-  // Load image file
+void loadImage(u32 *texture, int width, int height, const char *filename) {
   SDL_Surface *surface = IMG_Load(filename);
   if (!surface) {
     fprintf(stderr, "[ERROR] Failed to load %s: %s\n", filename,
@@ -56,7 +33,6 @@ void loadImage(uint32_t *texture, int width, int height, const char *filename) {
     return;
   }
 
-  // Convert to ARGB8888 format if needed
   SDL_Surface *converted =
       SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_ARGB8888, 0);
   SDL_FreeSurface(surface);
@@ -68,7 +44,7 @@ void loadImage(uint32_t *texture, int width, int height, const char *filename) {
   }
 
   // Copy pixel data to texture buffer
-  uint32_t *pixels = (uint32_t *)converted->pixels;
+  u32 *pixels = (u32 *)converted->pixels;
   int minW = (width < converted->w) ? width : converted->w;
   int minH = (height < converted->h) ? height : converted->h;
 
@@ -101,6 +77,8 @@ void loadArrays(TextureManager *tm, int texWidth, int texHeight) {
   for (int i = 0; i < NUM_ENTITY_TEXTURES; i++)
     loadImage(tm->textures[index + i], texWidth, texHeight,
               entityTextures[i].path);
+
+  // Load animations?
 
   printf("[TEXTURE] Textures loaded...\n");
 }

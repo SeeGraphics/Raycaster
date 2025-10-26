@@ -42,8 +42,30 @@ void drawScene(Engine *engine) {
     fprintf(stderr, "[ERROR] game.Zbuffer is NULL!\n");
   }
   perform_spritecasting(engine);
+  switch (engine->player.selectedGun) {
+  case SHOTGUN:
+    blitAnimation(engine->game.Rbuffer, &animations.shotgun_shoot, RENDER_WIDTH,
+                  RENDER_HEIGHT, RENDER_WIDTH / 2 - 75, RENDER_HEIGHT - 150,
+                  1.5);
+    break;
+  case ROCKET:
+    blitAnimation(engine->game.Rbuffer, &animations.rocket_shoot, RENDER_WIDTH,
+                  RENDER_HEIGHT, RENDER_WIDTH / 2 - 75, RENDER_HEIGHT - 150,
+                  1.5);
+    break;
+  case PISTOL:
+    blitAnimation(engine->game.Rbuffer, &animations.pistol_shoot, RENDER_WIDTH,
+                  RENDER_HEIGHT, RENDER_WIDTH / 2 - 75, RENDER_HEIGHT - 150,
+                  1.5);
+    break;
+  case HANDS:
+    blitAnimation(engine->game.Rbuffer, &animations.hands_punsh, RENDER_WIDTH,
+                  RENDER_HEIGHT, RENDER_WIDTH / 2 - 150, RENDER_HEIGHT - 150,
+                  1.5);
+    break;
+  default:
+    break;
+  }
   drawBuffer(&engine->game);
-  drawCurrentAnimation(&engine->game, &engine->animation, 0.4f, 0.6f, 0.3, 0.4);
   drawHud(engine);
-  drawCrosshair(&engine->game);
 }

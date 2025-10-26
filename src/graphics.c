@@ -1,25 +1,25 @@
 #include "graphics.h"
+#include "types.h"
 #include <SDL2/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 Game createGame() {
   Game g = {NULL,          NULL, NULL, TITLE, WINDOW_WIDTH,
-            WINDOW_HEIGHT, NULL, NULL, NULL,  NULL};
+            WINDOW_HEIGHT, NULL, NULL, NULL};
   return g;
 }
 
 int buffers_reallocate(Game *game) {
   free(game->buffer);
-  game->buffer =
-      malloc(game->window_width * game->window_height * sizeof(uint32_t));
+  game->buffer = malloc(game->window_width * game->window_height * sizeof(u32));
   if (!game->buffer) {
     fprintf(stderr, "[ERROR] Couldn't allocate buffer");
     SDL_cleanup(game, EXIT_FAILURE);
     return 1;
   }
   free(game->Rbuffer);
-  game->Rbuffer = malloc(RENDER_WIDTH * RENDER_HEIGHT * sizeof(uint32_t));
+  game->Rbuffer = malloc(RENDER_WIDTH * RENDER_HEIGHT * sizeof(u32));
   if (!game->Rbuffer) {
     fprintf(stderr, "[ERROR] Couldn't allocate Rbuffer");
     SDL_cleanup(game, EXIT_FAILURE);
@@ -56,8 +56,7 @@ void clearBuffer(Game *game) {
 
 int buffers_init(Game *game) {
   // game pixel buffer (main buffer we draw to)
-  game->buffer =
-      malloc(game->window_width * game->window_height * sizeof(uint32_t));
+  game->buffer = malloc(game->window_width * game->window_height * sizeof(u32));
   if (!game->buffer) {
     fprintf(stderr, "[ERROR] Couldn't allocate buffer");
     SDL_cleanup(game, EXIT_FAILURE);
@@ -65,7 +64,7 @@ int buffers_init(Game *game) {
   }
 
   // renderBuffer for performance
-  game->Rbuffer = malloc(RENDER_WIDTH * RENDER_HEIGHT * sizeof(uint32_t));
+  game->Rbuffer = malloc(RENDER_WIDTH * RENDER_HEIGHT * sizeof(u32));
   if (!game->Rbuffer) {
     fprintf(stderr, "[ERROR] Couldn't allocate Rbuffer");
     SDL_cleanup(game, EXIT_FAILURE);
@@ -151,7 +150,7 @@ void drawBuffer(Game *game) {
   SDL_UpdateTexture(game->screen_texture,
                     NULL, // Update entire texture
                     game->Rbuffer,
-                    RENDER_WIDTH * sizeof(uint32_t) // Pitch (bytes per row)
+                    RENDER_WIDTH * sizeof(u32) // Pitch (bytes per row)
   );
 
   /* Here we use Rbuffer (low res) to create the texture, then create a

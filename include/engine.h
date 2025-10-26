@@ -16,7 +16,6 @@ typedef struct Engine {
   TextureManager textures;
   SoundManager sound;
   Sprite *sprites;
-  Animation animation;
   Font font;
 
   // Time tracking

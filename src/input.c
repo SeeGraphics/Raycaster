@@ -72,14 +72,25 @@ int handleInput(Engine *engine, double deltaTime) {
       }
 
       // Reload
-      if (event.key.keysym.scancode == GUN_RELOAD &&
-          engine->animation.playing == 0) {
-        playAnimation(&engine->animation, ANIM_SHOTGUN_RELOAD);
+      if (event.key.keysym.scancode == GUN_RELOAD) {
         playShotgunReload(&engine->sound);
       }
     }
 
     /* MOUSE EVENTS */
+    if (event.type == SDL_MOUSEWHEEL && !engine->player.shooting) {
+      if (event.wheel.y > 0) {
+        // Scroll up -> next gun
+        engine->player.selectedGun =
+            (engine->player.selectedGun + 1) % engine->player.gunsTotal;
+      } else if (event.wheel.y < 0) {
+        // Optional: scroll down ->  previous gun
+        engine->player.selectedGun =
+            (engine->player.selectedGun - 1 + engine->player.gunsTotal) %
+            engine->player.gunsTotal;
+      }
+    }
+
     if (event.type == SDL_MOUSEMOTION) {
       // Horizontal rotation
       player_rotate(&engine->player, mouse_rotationAmount(engine->player.sensX,
@@ -97,9 +108,35 @@ int handleInput(Engine *engine, double deltaTime) {
     }
 
     if (event.type == SDL_MOUSEBUTTONDOWN) {
-      if (event.button.button == MSB_LEFT && engine->animation.playing == 0) {
-        playAnimation(&engine->animation, ANIM_SHOTGUN_SHOOT);
-        playShotgunShot(&engine->sound);
+      if (event.button.button == MSB_LEFT) {
+        switch (engine->player.selectedGun) {
+        case SHOTGUN:
+          if (!animations.shotgun_shoot.playing) {
+            animations.shotgun_shoot.playing = 1;
+            playShotgunShot(&engine->sound);
+          }
+          break;
+        case ROCKET:
+          if (!animations.rocket_shoot.playing) {
+            animations.rocket_shoot.playing = 1;
+            playRocketShot(&engine->sound);
+            break;
+          }
+        case PISTOL:
+          if (!animations.pistol_shoot.playing) {
+            animations.pistol_shoot.playing = 1;
+            playPistolShot(&engine->sound);
+            break;
+          }
+        case HANDS:
+          if (!animations.hands_punsh.playing) {
+            animations.hands_punsh.playing = 1;
+            playHandsPunsh(&engine->sound);
+            break;
+          }
+        default:
+          break;
+        }
       }
     }
   }

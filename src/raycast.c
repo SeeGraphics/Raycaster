@@ -89,7 +89,7 @@ void perform_raycasting(Engine *engine) {
       int texY = (int)texPos & (TEXT_HEIGHT - 1);
       texPos += step;
 
-      uint32_t color =
+      u32 color =
           engine->textures.textures[texNum][texY * TEXT_WIDTH + texX];
 
       if (side == 1)
@@ -145,7 +145,7 @@ void perform_floorcasting(Engine *engine) {
       // Choose texture and draw the pixel
       int floorTexture = 3;
       int ceilingTexture = 6;
-      uint32_t color;
+      u32 color;
 
       if (p > 0) {
         // Floor (below horizon)

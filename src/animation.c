@@ -1,173 +1,185 @@
 #include "animation.h"
-#include "graphics.h"
+#include "SDL_surface.h"
+#include "player.h"
+#include "types.h"
 #include <SDL.h>
 #include <SDL_image.h>
 #include <stdio.h>
 
-SDL_Texture *shotgun_shoot[SHOTGUN_SHOOT_FRAMES] = {NULL};
-SDL_Texture *shotgun_reload[SHOTGUN_RELOAD_FRAMES] = {NULL};
-SDL_Texture *demon_walk[DEMON_WALK_FRAMES] = {NULL};
+AnimationRegistry animations;
 
-/* INIT */
-Animation createAnimation() {
-  Animation anim = {.currentType = ANIM_SHOTGUN_IDLE,
-                    .currentFrame = 0,
-                    .frameTime = 0.10,
-                    .timeAccumulator = 0.0,
-                    .playing = 0,
-                    .currentTextures =
-                        shotgun_shoot, // Default to shoot idle frame
-                    .numFrames = SHOTGUN_SHOOT_FRAMES};
-  return anim;
-}
+Frame loadFrame(const char *path) {
 
-/* UPDATE */
-void updateAnimation(Animation *anim, double deltaTime) {
-  if (!anim->playing) {
-    return; // Not playing, nothing to update
-  }
+  SDL_Surface *surface = IMG_Load(path);
+  if (!surface)
+    fprintf(stderr, "[ERROR] Failed to create Surface:  %s", SDL_GetError());
 
-  anim->timeAccumulator += deltaTime;
-
-  // Time to advance to next frame?
-  if (anim->timeAccumulator >= anim->frameTime) {
-    anim->timeAccumulator -= anim->frameTime;
-    anim->currentFrame++;
-
-    // Animation finished?
-    if (anim->currentFrame >= anim->numFrames) {
-      anim->currentFrame = 0;
-      anim->playing = 0;
-
-      // Return to idle (shoot frame 0)
-      anim->currentType = ANIM_SHOTGUN_IDLE;
-      anim->currentTextures = shotgun_shoot;
-      anim->numFrames = SHOTGUN_SHOOT_FRAMES;
-    }
-  }
-}
-
-void playAnimation(Animation *anim, AnimationType type) {
-  // Dont interrupt current animation
-  if (anim->playing) {
-    return;
-  }
-
-  anim->currentType = type;
-  anim->currentFrame = 0;
-  anim->timeAccumulator = 0.0;
-  anim->playing = 1;
-
-  switch (type) {
-  case ANIM_SHOTGUN_SHOOT:
-    anim->currentTextures = shotgun_shoot;
-    anim->numFrames = SHOTGUN_SHOOT_FRAMES;
-    break;
-
-  case ANIM_SHOTGUN_RELOAD:
-    anim->currentTextures = shotgun_reload;
-    anim->numFrames = SHOTGUN_RELOAD_FRAMES;
-    break;
-
-  case ANIM_SHOTGUN_IDLE:
-  default:
-    anim->currentTextures = shotgun_shoot;
-    anim->numFrames = 1; // Just show first frame
-    anim->playing = 0;
-    break;
-  }
-}
-
-/* LOAD ANIMATIONS */
-SDL_Texture *loadTexture(SDL_Renderer *renderer, const char *filePath) {
-  SDL_Surface *surface = IMG_Load(filePath);
-  if (!surface) {
-    fprintf(stderr, "[ERROR] Failed to load image '%s': %s\n", filePath,
-            IMG_GetError());
-    return NULL;
-  }
-
-  // Set color key for transparency (green #99E550)
-  Uint32 green = SDL_MapRGB(surface->format, 0x99, 0xE5, 0x50);
+  u32 green = SDL_MapRGB(surface->format, 0x99, 0xE5, 0x50);
   SDL_SetColorKey(surface, SDL_TRUE, green);
 
-  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+  SDL_Surface *converted =
+      SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_ARGB8888, 0);
+  if (!converted)
+    fprintf(stderr, "[ERROR] Failed to create Surface:  %s", SDL_GetError());
+
+  int width = converted->w;
+  int height = converted->h;
+
+  u32 *pixels = malloc(width * height * sizeof(u32));
+  if (!pixels)
+    fprintf(stderr, "[ERROR] Failed to allocate buffer:  %s", SDL_GetError());
+  u32 *image = (u32 *)converted->pixels;
+  if (!image)
+    fprintf(stderr, "[ERROR] Failed to allocate buffer:  %s", SDL_GetError());
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int image_index = y * (converted->pitch / 4) + x;
+      int dstindex = y * width + x;
+
+      u32 color = image[image_index];
+      pixels[dstindex] = color;
+    }
+  }
+
   SDL_FreeSurface(surface);
+  SDL_FreeSurface(converted);
 
-  if (!texture) {
-    fprintf(stderr, "[ERROR] Failed to create texture for '%s': %s\n", filePath,
-            SDL_GetError());
-    return NULL;
-  }
-
-  SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
-  return texture;
+  Frame frame = {pixels, width, height};
+  return frame;
 }
 
-void loadAllAnimations(SDL_Renderer *renderer) {
-  char filePath[1028];
+Animation loadAnimation(const char *folder, int frameCount, double frameTime,
+                        int playing, int looping) {
+  Animation animation;
+  animation.playing = playing;
+  animation.timeAccumulator = 0;
+  animation.frameCount = frameCount;
+  animation.frameTime = frameTime;
+  animation.currentFrame = 0;
+  animation.looping = looping;
+  animation.frames = malloc(frameCount * sizeof(Frame));
+  if (!animation.frames)
+    fprintf(stderr, "[ERROR] Failed to allocate buffer: %s", SDL_GetError());
 
-  // Load shoot frames
-  for (int i = 0; i < SHOTGUN_SHOOT_FRAMES; i++) {
-    snprintf(filePath, sizeof(filePath),
-             "assets/textures/weapons/shotgun/shoot/%d.png", i);
-    shotgun_shoot[i] = loadTexture(renderer, filePath);
-    if (!shotgun_shoot[i]) {
-      fprintf(stderr, "[ERROR] Failed to load shotgun shoot frame %d\n", i);
-    }
+  for (int i = 0; i < frameCount; i++) {
+    char path[256];
+    snprintf(path, sizeof(path), "%s/%d.png", folder, i);
+    animation.frames[i] = loadFrame(path);
   }
 
-  // Load reload frames
-  for (int i = 0; i < SHOTGUN_RELOAD_FRAMES; i++) {
-    snprintf(filePath, sizeof(filePath),
-             "assets/textures/weapons/shotgun/reload/%d.png", i);
-    shotgun_reload[i] = loadTexture(renderer, filePath);
-    if (!shotgun_reload[i]) {
-      fprintf(stderr, "[ERROR] Failed to load shotgun reload frame %d\n", i);
-    }
-  }
-
-  printf("[ANIMATION] Loaded shotgun animations\n");
+  return animation;
 }
 
-/* DRAW ANIMATIONS */
-void drawCurrentAnimation(Game *game, Animation *anim, float widthFactor,
-                          float heightFactor, float posX, float posY) {
+void loadAllAnimations() {
+  animations.shotgun_shoot =
+      loadAnimation("assets/textures/weapons/shotgun/shoot",
+                    FRAMES_SHOTGUN_SHOOT, FRAMETIME_SHOTGUN, 0, 0);
+  animations.rocket_shoot =
+      loadAnimation("assets/textures/weapons/rocket/shoot", FRAMES_ROCKET_SHOOT,
+                    FRAMETIME_ROCKET, 0, 0);
+  animations.pistol_shoot =
+      loadAnimation("assets/textures/weapons/pistol/shoot", FRAMES_PISTOL_SHOOT,
+                    FRAMETIME_PISTOL, 0, 0);
+  animations.hands_punsh =
+      loadAnimation("assets/textures/weapons/hands/punsh", FRAMES_HANDS_PUNSH,
+                    FRAMETIME_HANDS, 0, 0);
+}
 
-  if (!anim->currentTextures || !anim->currentTextures[anim->currentFrame]) {
+void updateAnimation(Animation *animation, Player *player, double deltaTime) {
+  if (animation->playing) {
+    player->shooting = 1;
+    animation->timeAccumulator += deltaTime;
+
+    if (animation->timeAccumulator >= animation->frameTime) {
+      animation->timeAccumulator -= animation->frameTime;
+      animation->currentFrame++;
+
+      if (animation->currentFrame >= animation->frameCount) {
+        player->shooting = 0;
+        if (animation->looping) {
+          animation->currentFrame = 0;
+        } else {
+          animation->currentFrame = 0;
+          animation->playing = 0;
+        }
+      }
+    }
+  } else {
     return;
   }
-
-  SDL_Texture *currentTexture = anim->currentTextures[anim->currentFrame];
-
-  int winW = game->window_width;
-  int winH = game->window_height;
-
-  // Scale to screen size
-  int gunW = (int)(winW * widthFactor);
-  int gunH = (int)(winH * heightFactor);
-
-  // Calculate position (centered by default if posX/posY are relative)
-  int x = (int)(posX * winW);
-  int y = (int)(posY * winH);
-
-  SDL_Rect dstRect = {x, y, gunW, gunH};
-  SDL_RenderCopy(game->renderer, currentTexture, NULL, &dstRect);
 }
 
-/* CLEANUP */
-void cleanupAnimations() {
-  for (int i = 0; i < SHOTGUN_SHOOT_FRAMES; i++) {
-    if (shotgun_shoot[i]) {
-      SDL_DestroyTexture(shotgun_shoot[i]);
-      shotgun_shoot[i] = NULL;
+void updateAllAnimations(Player *player, double deltaTime) {
+  updateAnimation(&animations.shotgun_shoot, player, deltaTime);
+  updateAnimation(&animations.rocket_shoot, player, deltaTime);
+  updateAnimation(&animations.pistol_shoot, player, deltaTime);
+  updateAnimation(&animations.hands_punsh, player, deltaTime);
+}
+
+void blitFrame(u32 *buffer, Frame *frame, float width, float height, float x,
+               float y, float scale) {
+
+  int scaled_height = (int)frame->height * scale;
+  int scaled_width = (int)frame->width * scale;
+  for (int dsty = 0; dsty < scaled_height; dsty++) {
+    for (int dstx = 0; dstx < scaled_width; dstx++) {
+      int imgy = (int)dsty / scale;
+      int imgx = (int)dstx / scale;
+
+      int screenX = dstx + x;
+      int screenY = dsty + y;
+
+      if (screenX < 0 || screenX >= width || screenY < 0 || screenY >= height) {
+        continue;
+      }
+
+      int image_index = imgy * frame->width + imgx;
+      uint32_t color = frame->pixels[image_index];
+
+      if ((color & 0xFF000000) == 0) {
+        continue;
+      }
+
+      int dstIndex = screenY * width + screenX;
+      buffer[dstIndex] = color;
+    }
+  }
+}
+
+void blitAnimation(u32 *buffer, Animation *animation, float width, float height,
+                   float x, float y, float scale) {
+  Frame *currentFrame = &animation->frames[animation->currentFrame];
+
+  blitFrame(buffer, currentFrame, width, height, x, y, scale);
+}
+
+void freeFrame(Frame *frame) {
+  if (frame->pixels) {
+    free(frame->pixels);
+    frame->pixels = NULL;
+  }
+}
+
+void freeAnimation(Animation *animation) {
+  if (!animation || !animation->frames)
+    return;
+
+  //  free frames
+  for (int i = 0; i < animation->frameCount; i++) {
+    if (animation->frames[i].pixels) {
+      free(animation->frames[i].pixels);
+      animation->frames[i].pixels = NULL;
     }
   }
 
-  for (int i = 0; i < SHOTGUN_RELOAD_FRAMES; i++) {
-    if (shotgun_reload[i]) {
-      SDL_DestroyTexture(shotgun_reload[i]);
-      shotgun_reload[i] = NULL;
-    }
-  }
+  // Free the arrays
+  free(animation->frames);
+  animation->frames = NULL;
+}
+
+void freeAllAnimations() {
+  freeAnimation(&animations.rocket_shoot);
+  freeAnimation(&animations.shotgun_shoot);
+  freeAnimation(&animations.pistol_shoot);
 }

@@ -2,6 +2,7 @@
 #define TEXTURE_H
 
 #include "graphics.h"
+#include "types.h"
 #include <stdint.h>
 
 // texture size
@@ -16,7 +17,7 @@
   (NUM_WALL_TEXTURES + NUM_DECOR_TEXTURES + NUM_ENTITY_TEXTURES)
 
 typedef struct {
-  uint32_t *textures[NUM_TEXTURES];
+  u32 *textures[NUM_TEXTURES];
 } TextureManager;
 
 typedef struct {
@@ -45,12 +46,10 @@ static const TextureInfo entityTextures[NUM_ENTITY_TEXTURES] = {
 
 // init
 TextureManager createTextures();
-SDL_Texture *loadCrosshair(Game *game);
-void drawCrosshair(Game *game);
 int textures_load(TextureManager *tm);
 
 // loading
-void loadImage(uint32_t *texture, int width, int height, const char *filename);
+void loadImage(u32 *texture, int width, int height, const char *filename);
 void loadArrays(TextureManager *tm, int texWidth, int texHeight);
 int getTextureIndexByName(const char *name);
 

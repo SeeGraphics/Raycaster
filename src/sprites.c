@@ -1,5 +1,6 @@
 #include "sprites.h"
 #include "engine.h"
+#include "types.h"
 
 Sprite *createSprite() {
   static Sprite s[NUM_SPRITES] = {
@@ -112,7 +113,7 @@ void perform_spritecasting(Engine *engine) {
           texY &= (TEXT_HEIGHT - 1);
 
           Uint32 color =
-              engine->textures.textures[texIndex][TEXT_WIDTH * texY + texX];
+              engine->textures.textures[texIndex][texY * TEXT_WIDTH + texX];
 
           // clamp tex coords
           if (texX < 0)

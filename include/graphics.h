@@ -7,6 +7,8 @@
 #define WINDOW_HEIGHT 800
 #define TITLE "Raycaster"
 
+#include "types.h"
+
 // render to small internal Res
 #define RENDER_WIDTH 600
 #define RENDER_HEIGHT 300
@@ -24,13 +26,12 @@
 typedef struct {
   SDL_Window *window;
   SDL_Renderer *renderer;
-  SDL_Texture *screen_texture;
+  SDL_Texture *screen_texture; // rendering target
   char *title;
   int window_width;
   int window_height;
-  SDL_Texture *crosshair;
-  uint32_t *buffer;
-  uint32_t *Rbuffer;
+  u32 *buffer;
+  u32 *Rbuffer;
   double *Zbuffer;
 } Game;
 

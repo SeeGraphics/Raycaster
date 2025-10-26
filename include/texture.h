@@ -1,7 +1,6 @@
 #ifndef TEXTURE_H
 #define TEXTURE_H
 
-#include "graphics.h"
 #include "types.h"
 #include <stdint.h>
 
@@ -10,7 +9,7 @@
 #define TEXT_WIDTH 64
 
 // texture count
-#define NUM_WALL_TEXTURES 8
+#define NUM_WALL_TEXTURES 13
 #define NUM_DECOR_TEXTURES 3
 #define NUM_ENTITY_TEXTURES 1
 #define NUM_TEXTURES                                                           \
@@ -34,7 +33,13 @@ static const TextureInfo wallTextures[NUM_WALL_TEXTURES] = {
     {"assets/textures/sides/bluestone.png", "BlueStone"},
     {"assets/textures/sides/mossy.png", "Mossy"},
     {"assets/textures/sides/wood.png", "Wood"},
-    {"assets/textures/sides/colorstone.png", "ColorStone"}};
+    {"assets/textures/sides/colorstone.png", "ColorStone"},
+    {"assets/textures/sides/brick.png", "Brick"},
+    {"assets/textures/sides/cobble.png", "Cobble"},
+    {"assets/textures/sides/irondoor.png", "Irondoor"},
+    {"assets/textures/sides/irondoor_open.png", "IrondoorOpen"},
+    {"assets/textures/sides/metal.png", "Metal"},
+};
 
 static const TextureInfo decorTextures[NUM_DECOR_TEXTURES] = {
     {"assets/textures/decorations/pillar.png", "Pillar"},

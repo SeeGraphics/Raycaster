@@ -9,12 +9,14 @@
 #define FRAMETIME_ROCKET 0.09
 #define FRAMETIME_PISTOL 0.09
 #define FRAMETIME_HANDS 0.08
+#define FRAMETIME_SINGLE_SHOOT 0.12
 
 /* FRAME COUNTS */
 #define FRAMES_SHOTGUN_SHOOT 3
 #define FRAMES_ROCKET_SHOOT 5
 #define FRAMES_PISTOL_SHOOT 6
 #define FRAMES_HANDS_PUNSH 3
+#define FRAMES_SINGLE_SHOOT 3
 
 typedef struct {
   u32 *pixels;
@@ -37,6 +39,7 @@ typedef struct {
   Animation rocket_shoot;
   Animation pistol_shoot;
   Animation hands_punsh;
+  Animation single_shoot;
 } AnimationRegistry;
 
 extern AnimationRegistry animations;

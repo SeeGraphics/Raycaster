@@ -84,6 +84,9 @@ void loadAllAnimations() {
   animations.hands_punsh =
       loadAnimation("assets/textures/weapons/hands/punsh", FRAMES_HANDS_PUNSH,
                     FRAMETIME_HANDS, 0, 0);
+  animations.single_shoot =
+      loadAnimation("assets/textures/weapons/single_shotgun/shoot",
+                    FRAMES_SINGLE_SHOOT, FRAMETIME_SINGLE_SHOOT, 0, 0);
 }
 
 void updateAnimation(Animation *animation, Player *player, double deltaTime) {
@@ -115,6 +118,7 @@ void updateAllAnimations(Player *player, double deltaTime) {
   updateAnimation(&animations.rocket_shoot, player, deltaTime);
   updateAnimation(&animations.pistol_shoot, player, deltaTime);
   updateAnimation(&animations.hands_punsh, player, deltaTime);
+  updateAnimation(&animations.single_shoot, player, deltaTime);
 }
 
 void blitFrame(u32 *buffer, Frame *frame, float width, float height, float x,
@@ -182,4 +186,6 @@ void freeAllAnimations() {
   freeAnimation(&animations.rocket_shoot);
   freeAnimation(&animations.shotgun_shoot);
   freeAnimation(&animations.pistol_shoot);
+  freeAnimation(&animations.single_shoot);
+  freeAnimation(&animations.hands_punsh);
 }

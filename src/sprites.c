@@ -1,38 +1,45 @@
 #include "sprites.h"
 #include "engine.h"
-#include "types.h"
 
 Sprite *createSprite() {
   static Sprite s[NUM_SPRITES] = {
-      // green lights
-      {20.5, 11.5, 10},
-      {18.5, 4.5, 10},
-      {10.0, 4.5, 10},
-      {10.0, 12.5, 10},
-      {3.5, 6.5, 10},
-      {3.5, 20.5, 10},
-      {3.5, 14.5, 10},
-      {14.5, 20.5, 10},
+      // Green lights
+      {2.5, 2.5, TEX_GREENLIGHT},
+      {6.5, 2.5, TEX_GREENLIGHT},
+      {12.5, 2.5, TEX_GREENLIGHT},
+      {22.5, 2.5, TEX_GREENLIGHT},
+      {2.5, 10.5, TEX_GREENLIGHT},
+      {2.5, 22.5, TEX_GREENLIGHT},
+      {22.5, 22.5, TEX_GREENLIGHT},
+      {15.5, 11.5, TEX_GREENLIGHT},
 
-      // row of pillars
-      {18.5, 10.5, 11},
-      {18.5, 11.5, 8},
-      {18.5, 12.5, 8},
+      // Pillars (rows or clusters)
+      {4.5, 4.5, TEX_PILLAR},
+      {4.5, 5.5, TEX_PILLAR},
+      {11.5, 10.5, TEX_PILLAR},
+      {11.5, 12.5, TEX_PILLAR},
+      {17.5, 17.5, TEX_PILLAR},
+      {17.5, 19.5, TEX_PILLAR},
 
-      // barrels
-      {21.5, 1.5, 9},
-      {15.5, 1.5, 9},
-      {16.0, 1.8, 9},
-      {16.2, 1.2, 9},
-      {3.5, 2.5, 9},
-      {9.5, 15.5, 9},
-      {10.0, 15.1, 9},
-      {10.5, 15.8, 9},
+      // Barrels (clusters/triangles)
+      {1.5, 1.5, TEX_BARREL},
+      {1.5, 7.5, TEX_BARREL},
+      {7.5, 1.5, TEX_BARREL},
+      {7.5, 7.5, TEX_BARREL},
+      {13.5, 1.5, TEX_BARREL},
+      {10.5, 11.5, TEX_BARREL},
+      {12.5, 11.5, TEX_BARREL},
+      {9.5, 17.5, TEX_BARREL},
+      {10.5, 18.5, TEX_BARREL},
+      {16.5, 17.5, TEX_BARREL},
+      {17.5, 18.5, TEX_BARREL},
+      {21.5, 16.5, TEX_BARREL},
+      {21.5, 19.5, TEX_BARREL},
+      {21.5, 1.5, TEX_BARREL},
   };
 
   return s;
 }
-
 void perform_spritecasting(Engine *engine) {
   int spriteOrder[NUM_SPRITES];
   double spriteDistance[NUM_SPRITES];

@@ -120,20 +120,26 @@ int handleInput(Engine *engine, double deltaTime) {
           if (!animations.rocket_shoot.playing) {
             animations.rocket_shoot.playing = 1;
             playRocketShot(&engine->sound);
-            break;
           }
+          break;
         case PISTOL:
           if (!animations.pistol_shoot.playing) {
             animations.pistol_shoot.playing = 1;
             playPistolShot(&engine->sound);
-            break;
           }
+          break;
         case HANDS:
           if (!animations.hands_punsh.playing) {
             animations.hands_punsh.playing = 1;
             playHandsPunsh(&engine->sound);
-            break;
           }
+          break;
+        case SINGLE:
+          if (!animations.single_shoot.playing) {
+            animations.single_shoot.playing = 1;
+            playShotgunShot(&engine->sound);
+          }
+          break;
         default:
           break;
         }

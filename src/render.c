@@ -45,23 +45,28 @@ void drawScene(Engine *engine) {
   switch (engine->player.selectedGun) {
   case SHOTGUN:
     blitAnimation(engine->game.Rbuffer, &animations.shotgun_shoot, RENDER_WIDTH,
-                  RENDER_HEIGHT, RENDER_WIDTH / 2 - 75, RENDER_HEIGHT - 150,
-                  1.5);
+                  RENDER_HEIGHT, (float)RENDER_WIDTH / 2 - 75,
+                  RENDER_HEIGHT - 150, 1.5);
     break;
   case ROCKET:
     blitAnimation(engine->game.Rbuffer, &animations.rocket_shoot, RENDER_WIDTH,
-                  RENDER_HEIGHT, RENDER_WIDTH / 2 - 75, RENDER_HEIGHT - 150,
-                  1.5);
+                  RENDER_HEIGHT, (float)RENDER_WIDTH / 2 - 75,
+                  RENDER_HEIGHT - 150, 1.5);
     break;
   case PISTOL:
     blitAnimation(engine->game.Rbuffer, &animations.pistol_shoot, RENDER_WIDTH,
-                  RENDER_HEIGHT, RENDER_WIDTH / 2 - 75, RENDER_HEIGHT - 150,
-                  1.5);
+                  RENDER_HEIGHT, (float)RENDER_WIDTH / 2 - 75,
+                  RENDER_HEIGHT - 150, 1.5);
     break;
   case HANDS:
     blitAnimation(engine->game.Rbuffer, &animations.hands_punsh, RENDER_WIDTH,
-                  RENDER_HEIGHT, RENDER_WIDTH / 2 - 150, RENDER_HEIGHT - 150,
-                  1.5);
+                  RENDER_HEIGHT, (float)RENDER_WIDTH / 2 - 150,
+                  RENDER_HEIGHT - 150, 1.5);
+    break;
+  case SINGLE:
+    blitAnimation(engine->game.Rbuffer, &animations.single_shoot, RENDER_WIDTH,
+                  RENDER_HEIGHT, (float)RENDER_WIDTH / 2 - 75,
+                  RENDER_HEIGHT - 150, 1.5);
     break;
   default:
     break;

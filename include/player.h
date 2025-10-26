@@ -5,7 +5,7 @@
 #include "map.h"
 #include <stdbool.h>
 
-#define GUNS_TOTAL 4
+#define GUNS_TOTAL 5
 #define CLAMP 160
 #define POS_X 22.0
 #define POS_Y 11.5
@@ -24,6 +24,7 @@ typedef enum {
   ROCKET,
   PISTOL,
   HANDS,
+  SINGLE,
 } SELECTED_GUN;
 
 typedef struct {

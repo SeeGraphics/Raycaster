@@ -71,7 +71,7 @@ Animation loadAnimation(const char *folder, int frameCount, double frameTime,
   return animation;
 }
 
-void loadAllAnimations() {
+void loadAllAnimations() { // 0 playing, 0 looping
   animations.shotgun_shoot =
       loadAnimation("assets/textures/weapons/shotgun/shoot",
                     FRAMES_SHOTGUN_SHOOT, FRAMETIME_SHOTGUN, 0, 0);
@@ -87,6 +87,12 @@ void loadAllAnimations() {
   animations.single_shoot =
       loadAnimation("assets/textures/weapons/single_shotgun/shoot",
                     FRAMES_SINGLE_SHOOT, FRAMETIME_SINGLE_SHOOT, 0, 0);
+  animations.minigun_shoot =
+      loadAnimation("assets/textures/weapons/minigun/shoot",
+                    FRAMES_MINIGUN_SHOOT, FRAMETIME_MINIGUN_SHOOT, 0, 1);
+  animations.minigun_idle =
+      loadAnimation("assets/textures/weapons/minigun/idle", FRAMES_MINIGUN_IDLE,
+                    FRAMETIME_MINIGUN_IDLE, 0, 0);
 }
 
 void updateAnimation(Animation *animation, Player *player, double deltaTime) {
@@ -119,6 +125,8 @@ void updateAllAnimations(Player *player, double deltaTime) {
   updateAnimation(&animations.pistol_shoot, player, deltaTime);
   updateAnimation(&animations.hands_punsh, player, deltaTime);
   updateAnimation(&animations.single_shoot, player, deltaTime);
+  updateAnimation(&animations.minigun_shoot, player, deltaTime);
+  updateAnimation(&animations.minigun_idle, player, deltaTime);
 }
 
 void blitFrame(u32 *buffer, Frame *frame, float width, float height, float x,
@@ -188,4 +196,6 @@ void freeAllAnimations() {
   freeAnimation(&animations.pistol_shoot);
   freeAnimation(&animations.single_shoot);
   freeAnimation(&animations.hands_punsh);
+  freeAnimation(&animations.minigun_shoot);
+  freeAnimation(&animations.minigun_idle);
 }

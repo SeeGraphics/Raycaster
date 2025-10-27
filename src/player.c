@@ -3,8 +3,9 @@
 #include <math.h>
 
 Player createPlayer() {
-  Player p = {POS_X,     POS_Y,  DIR_X,  DIR_Y, PLANE_X, PLANE_Y, MOVE_SPEED,
-              ROT_SPEED, SENS_X, SENS_Y, PITCH, 1,       0,       GUNS_TOTAL};
+  Player p = {POS_X,  POS_Y,      DIR_X,      DIR_Y,  PLANE_X, PLANE_Y,
+              HEALTH, MOVE_SPEED, ROT_SPEED,  SENS_X, SENS_Y,  PITCH,
+              1,      0,          TOTAL_GUNS, 0};
   return p;
 }
 

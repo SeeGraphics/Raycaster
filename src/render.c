@@ -1,26 +1,40 @@
 #include "engine.h"
 #include "raycast.h"
-#include "texture.h"
+#include "weapons.h"
 
 void drawHud(Engine *engine) {
-  // if fps doenst work, just do :  int fps = (engine->deltaTime > 0) ?
-  // (int)(1.0 / engine->deltaTime) : 0;
-  // draw FPS counter
-  renderInt(engine->game.renderer, engine->font.debug, "FPS", engine->fps, 10,
+  /* DEBUG INFO */
+  // FPS counter
+  renderInt(engine->game.renderer, engine->font.debug, "FPS:", engine->fps, 10,
             10, RGB_Yellow);
-  // draw Coordinates
-  renderFloatPair(engine->game.renderer, engine->font.debug, "POS",
-                  engine->player.posX, engine->player.posY, 10, 50, RGB_Yellow);
-  // draw direction
-  renderFloatPair(engine->game.renderer, engine->font.debug, "DIR",
-                  engine->player.dirX, engine->player.dirY, 10, 90, RGB_Yellow);
-  // draw pitch
-  renderFloat(engine->game.renderer, engine->font.debug, "PITCH",
-              engine->player.pitch, 10, 170, RGB_Yellow);
-  // draw plane
-  renderFloatPair(engine->game.renderer, engine->font.debug, "PLANE",
-                  engine->player.planeX, engine->player.planeY, 10, 130,
+  // Coordinates
+  renderFloatPair(engine->game.renderer, engine->font.debug,
+                  "POS:", engine->player.posX, engine->player.posY, 10, 30,
                   RGB_Yellow);
+  // direction
+  renderFloatPair(engine->game.renderer, engine->font.debug,
+                  "DIR:", engine->player.dirX, engine->player.dirY, 10, 50,
+                  RGB_Yellow);
+  // pitch
+  renderFloat(engine->game.renderer, engine->font.debug,
+              "PITCH:", engine->player.pitch, 10, 70, RGB_Yellow);
+  // plane
+  renderFloatPair(engine->game.renderer, engine->font.debug,
+                  "PLANE:", engine->player.planeX, engine->player.planeY, 10,
+                  90, RGB_Yellow);
+
+  /* GAME UI */
+  // health
+  renderProcent(engine->game.renderer, engine->font.ui, engine->player.health,
+                engine->game.window_width / 2 - 400,
+                engine->game.window_height - 100, RGB_DarkRed);
+  // ammo
+  if (weaponProperties[engine->player.selectedGun].ammunition != -1) {
+    renderInt(engine->game.renderer, engine->font.ui, "",
+              weaponProperties[engine->player.selectedGun].ammunition,
+              engine->game.window_width - 300, engine->game.window_height - 100,
+              RGB_DarkRed);
+  }
 }
 
 void drawScene(Engine *engine) {
@@ -67,6 +81,17 @@ void drawScene(Engine *engine) {
     blitAnimation(engine->game.Rbuffer, &animations.single_shoot, RENDER_WIDTH,
                   RENDER_HEIGHT, (float)RENDER_WIDTH / 2 - 75,
                   RENDER_HEIGHT - 150, 1.5);
+    break;
+  case MINIGUN:
+    if (animations.minigun_shoot.playing) {
+      blitAnimation(engine->game.Rbuffer, &animations.minigun_shoot,
+                    RENDER_WIDTH, RENDER_HEIGHT, (float)RENDER_WIDTH / 2 - 95,
+                    RENDER_HEIGHT - 150, 1.5);
+    } else {
+      blitAnimation(engine->game.Rbuffer, &animations.minigun_idle,
+                    RENDER_WIDTH, RENDER_HEIGHT, (float)RENDER_WIDTH / 2 - 95,
+                    RENDER_HEIGHT - 150, 1.5);
+    }
     break;
   default:
     break;

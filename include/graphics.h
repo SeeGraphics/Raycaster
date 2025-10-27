@@ -14,7 +14,7 @@
 #define RENDER_HEIGHT 300
 
 // colors
-#define RGB_Red ((SDL_Color){255, 0, 0, 255})
+#define RGB_DarkRed ((SDL_Color){137, 21, 2, 255})
 #define RGB_Green ((SDL_Color){0, 255, 0, 255})
 #define RGB_Blue ((SDL_Color){0, 0, 255, 255})
 #define RGB_White ((SDL_Color){255, 255, 255, 255})

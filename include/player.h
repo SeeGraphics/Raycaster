@@ -5,7 +5,6 @@
 #include "map.h"
 #include <stdbool.h>
 
-#define GUNS_TOTAL 5
 #define CLAMP 160
 #define POS_X 22.0
 #define POS_Y 11.5
@@ -13,6 +12,7 @@
 #define DIR_Y 0.0
 #define PLANE_X 0.0
 #define PLANE_Y 0.88
+#define HEALTH 100
 #define MOVE_SPEED 5.0
 #define ROT_SPEED 3.0
 #define SENS_X 0.002
@@ -25,12 +25,15 @@ typedef enum {
   PISTOL,
   HANDS,
   SINGLE,
+  MINIGUN,
+  TOTAL_GUNS,
 } SELECTED_GUN;
 
 typedef struct {
   double posX, posY;
   double dirX, dirY;
   double planeX, planeY;
+  int health;
   double moveSpeed;
   double rotSpeed;
   double sensX;
@@ -39,6 +42,7 @@ typedef struct {
   SELECTED_GUN selectedGun;
   int shooting; // to not allow gun swap when still in shooting animation
   int gunsTotal;
+  int mouseHeld;
 } Player;
 
 // init

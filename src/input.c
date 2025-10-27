@@ -1,5 +1,7 @@
 #include "input.h"
 #include "animation.h"
+#include "player.h"
+#include "weapons.h"
 
 int mouseUngrabbed = 0;
 
@@ -109,6 +111,11 @@ int handleInput(Engine *engine, double deltaTime) {
 
     if (event.type == SDL_MOUSEBUTTONDOWN) {
       if (event.button.button == MSB_LEFT) {
+        engine->player.mouseHeld = 1;
+        weaponProperties[engine->player.selectedGun].fireAccumulator = 0;
+        if (weaponProperties[engine->player.selectedGun].ammunition != -1) {
+          weaponProperties[engine->player.selectedGun].ammunition--;
+        }
         switch (engine->player.selectedGun) {
         case SHOTGUN:
           if (!animations.shotgun_shoot.playing) {
@@ -137,14 +144,46 @@ int handleInput(Engine *engine, double deltaTime) {
         case SINGLE:
           if (!animations.single_shoot.playing) {
             animations.single_shoot.playing = 1;
-            playShotgunShot(&engine->sound);
+            playSingleShot(&engine->sound);
           }
           break;
+        case MINIGUN:
+          if (!animations.minigun_shoot.playing) {
+            animations.minigun_shoot.playing = 1;
+            playMinigunShot(&engine->sound);
+          }
         default:
           break;
         }
       }
     }
+
+    if (event.type == SDL_MOUSEBUTTONUP) {
+      if (event.button.button == MSB_LEFT) {
+        engine->player.mouseHeld = 0;
+      }
+    }
+  }
+
+  if (engine->player.mouseHeld) {
+    WeaponProperties *weapon = &weaponProperties[engine->player.selectedGun];
+    if (weapon->automatic) {
+      weapon->fireAccumulator += deltaTime;
+      if (weapon->fireAccumulator >= weapon->fireRate) {
+        weaponProperties[engine->player.selectedGun].ammunition--;
+        weapon->fireAccumulator -= weapon->fireRate;
+        switch (engine->player.selectedGun) {
+        case MINIGUN:
+          if (animations.minigun_shoot.playing) {
+            playMinigunShot(&engine->sound);
+          }
+          break;
+        }
+      }
+    }
+  } else if (!engine->player.mouseHeld) {
+    engine->player.shooting = 0;
+    animations.minigun_shoot.playing = 0;
   }
 
   /* CONTINUOUS INPUT (held keys) */

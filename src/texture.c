@@ -53,7 +53,7 @@ void loadImage(u32 *texture, int width, int height, const char *filename) {
   }
 
   SDL_FreeSurface(converted);
-  printf("[ERROR] Loaded texture: %s\n", filename);
+  printf("[TEXTURE] Loaded texture: %s\n", filename);
 }
 
 void loadArrays(TextureManager *tm, int texWidth, int texHeight) {

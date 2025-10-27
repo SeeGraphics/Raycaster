@@ -14,8 +14,8 @@ int main() {
   while (true) {
     engine_updateTime(&engine);
     handleInput(&engine, engine.deltaTime);
-    updateAllAnimations(&engine.player, engine.deltaTime);
 
+    updateAllAnimations(&engine.player, engine.deltaTime);
     drawScene(&engine);
     SDL_RenderPresent(engine.game.renderer);
   }

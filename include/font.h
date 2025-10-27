@@ -3,6 +3,10 @@
 
 #include "SDL_ttf.h"
 
+#define FONTSIZE_TITLE 100
+#define FONTSIZE_DEBUG 20
+#define FONTSIZE_UI 50
+
 typedef struct {
   TTF_Font *title;
   TTF_Font *debug;
@@ -20,5 +24,6 @@ void renderInt(SDL_Renderer *renderer, TTF_Font *font, const char *label,
                int value, int x, int y, SDL_Color color);
 void renderFloat(SDL_Renderer *renderer, TTF_Font *font, const char *label,
                  double value, int x, int y, SDL_Color color);
-
+void renderProcent(SDL_Renderer *renderer, TTF_Font *font, int value, int x,
+                   int y, SDL_Color color);
 #endif

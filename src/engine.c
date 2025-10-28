@@ -3,6 +3,7 @@
 
 int engine_init(Engine *engine) {
 
+  engine->mode = GAME;
   engine->game = createGame();
 
   // SDL + TTF

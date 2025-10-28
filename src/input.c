@@ -74,6 +74,11 @@ int handleInput(Engine *engine, double deltaTime) {
         mouseUngrabbed = 0;
       }
 
+      if (event.key.keysym.scancode == CYCLE_GAME) {
+        engine->mode = (engine->mode + 1) % TOTAL_MODES;
+        printf("\033[35m[MODE] Current Game Mode: %d\033[0m\n", engine->mode);
+      }
+
       // Reload
       /* if (event.key.keysym.scancode == GUN_RELOAD) { */
       /*   playShotgunReload(&engine->sound); */

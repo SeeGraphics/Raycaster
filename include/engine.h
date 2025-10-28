@@ -9,7 +9,12 @@
 #include "sprites.h"
 #include "texture.h"
 
+typedef enum { GAME, DEBUG, TOTAL_MODES } GameMode;
+
 typedef struct Engine {
+  // Mode
+  int mode;
+
   // Objects
   Game game;
   Player player;

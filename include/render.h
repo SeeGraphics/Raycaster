@@ -3,7 +3,8 @@
 
 #include "engine.h"
 
-void drawHud(Engine *engine);
 void drawScene(Engine *engine);
+void drawGameHUD(Engine *engine);
+void drawGame(Engine *engine);
 
 #endif

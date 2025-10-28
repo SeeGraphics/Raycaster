@@ -5,35 +5,33 @@
 void drawHud(Engine *engine) {
   /* DEBUG INFO */
   // FPS counter
-  renderInt(engine->game.renderer, engine->font.debug, "FPS:", engine->fps, 10,
+  renderInt(engine->game.Rbuffer, engine->font.debug, "FPS:", engine->fps, 10,
             10, RGB_Yellow);
   // Coordinates
-  renderFloatPair(engine->game.renderer, engine->font.debug,
+  renderFloatPair(engine->game.Rbuffer, engine->font.debug,
                   "POS:", engine->player.posX, engine->player.posY, 10, 30,
                   RGB_Yellow);
   // direction
-  renderFloatPair(engine->game.renderer, engine->font.debug,
+  renderFloatPair(engine->game.Rbuffer, engine->font.debug,
                   "DIR:", engine->player.dirX, engine->player.dirY, 10, 50,
                   RGB_Yellow);
   // pitch
-  renderFloat(engine->game.renderer, engine->font.debug,
+  renderFloat(engine->game.Rbuffer, engine->font.debug,
               "PITCH:", engine->player.pitch, 10, 70, RGB_Yellow);
   // plane
-  renderFloatPair(engine->game.renderer, engine->font.debug,
+  renderFloatPair(engine->game.Rbuffer, engine->font.debug,
                   "PLANE:", engine->player.planeX, engine->player.planeY, 10,
                   90, RGB_Yellow);
 
   /* GAME UI */
   // health
-  renderProcent(engine->game.renderer, engine->font.ui, engine->player.health,
-                engine->game.window_width / 2 - 400,
-                engine->game.window_height - 100, RGB_DarkRed);
+  renderProcent(engine->game.Rbuffer, engine->font.ui, engine->player.health,
+                RENDER_WIDTH / 2 - 250, RENDER_HEIGHT - 40, RGB_DarkRed);
   // ammo
   if (weaponProperties[engine->player.selectedGun].ammunition != -1) {
-    renderInt(engine->game.renderer, engine->font.ui, "",
+    renderInt(engine->game.Rbuffer, engine->font.ui, "",
               weaponProperties[engine->player.selectedGun].ammunition,
-              engine->game.window_width - 300, engine->game.window_height - 100,
-              RGB_DarkRed);
+              RENDER_WIDTH / 2 + 200, RENDER_HEIGHT - 40, RGB_DarkRed);
   }
 }
 
@@ -72,11 +70,12 @@ void drawScene(Engine *engine) {
                   RENDER_HEIGHT, (float)RENDER_WIDTH / 2 - 75,
                   RENDER_HEIGHT - 150, 1.5);
     break;
-  case HANDS:
-    blitAnimation(engine->game.Rbuffer, &animations.hands_punsh, RENDER_WIDTH,
-                  RENDER_HEIGHT, (float)RENDER_WIDTH / 2 - 150,
-                  RENDER_HEIGHT - 150, 1.5);
-    break;
+  /* case HANDS: */
+  /*   blitAnimation(engine->game.Rbuffer, &animations.hands_punsh,
+   * RENDER_WIDTH, */
+  /*                 RENDER_HEIGHT, (float)RENDER_WIDTH / 2 - 150, */
+  /*                 RENDER_HEIGHT - 150, 1.5); */
+  /*   break; */
   case SINGLE:
     blitAnimation(engine->game.Rbuffer, &animations.single_shoot, RENDER_WIDTH,
                   RENDER_HEIGHT, (float)RENDER_WIDTH / 2 - 75,
@@ -96,6 +95,6 @@ void drawScene(Engine *engine) {
   default:
     break;
   }
-  drawBuffer(&engine->game);
   drawHud(engine);
+  drawBuffer(&engine->game);
 }

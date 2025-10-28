@@ -18,6 +18,7 @@ int main() {
     updateAllAnimations(&engine.player, engine.deltaTime);
     drawScene(&engine);
     SDL_RenderPresent(engine.game.renderer);
+    engine.frameCount++;
   }
 
   engine_cleanup(&engine, EXIT_SUCCESS);

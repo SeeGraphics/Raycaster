@@ -12,7 +12,8 @@ Frame loadFrame(const char *path) {
 
   SDL_Surface *surface = IMG_Load(path);
   if (!surface)
-    fprintf(stderr, "[ERROR] Failed to create Surface:  %s", SDL_GetError());
+    fprintf(stderr, "\033[31m[ERROR] Failed to create Surface:  %s\033[0m\n",
+            SDL_GetError());
 
   u32 green = SDL_MapRGB(surface->format, 0x99, 0xE5, 0x50);
   SDL_SetColorKey(surface, SDL_TRUE, green);
@@ -20,17 +21,20 @@ Frame loadFrame(const char *path) {
   SDL_Surface *converted =
       SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_ARGB8888, 0);
   if (!converted)
-    fprintf(stderr, "[ERROR] Failed to create Surface:  %s", SDL_GetError());
+    fprintf(stderr, "\033[31m[ERROR] Failed to create Surface:  %s\033[0m\n",
+            SDL_GetError());
 
   int width = converted->w;
   int height = converted->h;
 
   u32 *pixels = malloc(width * height * sizeof(u32));
   if (!pixels)
-    fprintf(stderr, "[ERROR] Failed to allocate buffer:  %s", SDL_GetError());
+    fprintf(stderr, "\033[31m[ERROR] Failed to allocate buffer:  %s\033[0m\n",
+            SDL_GetError());
   u32 *image = (u32 *)converted->pixels;
   if (!image)
-    fprintf(stderr, "[ERROR] Failed to allocate buffer:  %s", SDL_GetError());
+    fprintf(stderr, "\033[31m[ERROR] Failed to allocate buffer:  %s\033[0m\n",
+            SDL_GetError());
 
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
@@ -60,7 +64,8 @@ Animation loadAnimation(const char *folder, int frameCount, double frameTime,
   animation.looping = looping;
   animation.frames = malloc(frameCount * sizeof(Frame));
   if (!animation.frames)
-    fprintf(stderr, "[ERROR] Failed to allocate buffer: %s", SDL_GetError());
+    fprintf(stderr, "\033[31m[ERROR] Failed to allocate buffer: %s\033[0m\n",
+            SDL_GetError());
 
   for (int i = 0; i < frameCount; i++) {
     char path[256];

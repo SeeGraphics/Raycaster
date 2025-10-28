@@ -14,21 +14,21 @@ int buffers_reallocate(Game *game) {
   free(game->buffer);
   game->buffer = malloc(game->window_width * game->window_height * sizeof(u32));
   if (!game->buffer) {
-    fprintf(stderr, "[ERROR] Couldn't allocate buffer");
+    fprintf(stderr, "\033[31m[ERROR] Couldn't allocate buffer\033[0m\n");
     SDL_cleanup(game, EXIT_FAILURE);
     return 1;
   }
   free(game->Rbuffer);
   game->Rbuffer = malloc(RENDER_WIDTH * RENDER_HEIGHT * sizeof(u32));
   if (!game->Rbuffer) {
-    fprintf(stderr, "[ERROR] Couldn't allocate Rbuffer");
+    fprintf(stderr, "\033[31m[ERROR] Couldn't allocate Rbuffer\033[0m\n");
     SDL_cleanup(game, EXIT_FAILURE);
     return 1;
   }
   free(game->Zbuffer);
   game->Zbuffer = malloc(RENDER_WIDTH * sizeof(double));
   if (!game->Zbuffer) {
-    fprintf(stderr, "[ERROR] Couldn't allocate Zbuffer");
+    fprintf(stderr, "\033[31m[ERROR] Couldn't allocate Zbuffer\033[0m\n");
     SDL_cleanup(game, EXIT_FAILURE);
     return 1;
   }
@@ -37,7 +37,8 @@ int buffers_reallocate(Game *game) {
 
 void clearBuffer(Game *game) {
   if (!game || !game->buffer || !game->Rbuffer) {
-    fprintf(stderr, "[ERROR] clearBuffer called with NULL buffer!\n");
+    fprintf(stderr,
+            "\033[31m[ERROR] clearBuffer called with NULL buffer!\033[0m\n");
     return;
   }
 
@@ -58,7 +59,7 @@ int buffers_init(Game *game) {
   // game pixel buffer (main buffer we draw to)
   game->buffer = malloc(game->window_width * game->window_height * sizeof(u32));
   if (!game->buffer) {
-    fprintf(stderr, "[ERROR] Couldn't allocate buffer");
+    fprintf(stderr, "\033[31m[ERROR] Couldn't allocate buffer\033[0m");
     SDL_cleanup(game, EXIT_FAILURE);
     return 1;
   }
@@ -66,7 +67,7 @@ int buffers_init(Game *game) {
   // renderBuffer for performance
   game->Rbuffer = malloc(RENDER_WIDTH * RENDER_HEIGHT * sizeof(u32));
   if (!game->Rbuffer) {
-    fprintf(stderr, "[ERROR] Couldn't allocate Rbuffer");
+    fprintf(stderr, "\033[31m[ERROR] Couldn't allocate Rbuffer\033[0m\n");
     SDL_cleanup(game, EXIT_FAILURE);
     return 1;
   }
@@ -74,7 +75,7 @@ int buffers_init(Game *game) {
   // Z-index for sprites...
   game->Zbuffer = malloc(RENDER_WIDTH * sizeof(double));
   if (!game->Zbuffer) {
-    fprintf(stderr, "[ERROR] Couldn't allocate Zbuffer");
+    fprintf(stderr, "\033[31m[ERROR] Couldn't allocate Zbuffer\033[0m\n");
     SDL_cleanup(game, EXIT_FAILURE);
     return 1;
   }
@@ -83,17 +84,18 @@ int buffers_init(Game *game) {
 
 int SDL_initialize(Game *game) {
   if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
-    fprintf(stderr, "[ERROR] SDL failed to initialize: %s\n", SDL_GetError());
+    fprintf(stderr, "\033[31m[ERROR] SDL failed to initialize: %s\033[0m\n",
+            SDL_GetError());
     return 1;
   }
-  printf("[SDL] SDL loaded...\n");
+  printf("\033[32m[SDL] SDL loaded...\033[0m\n");
 
   game->window = SDL_CreateWindow(
       game->title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
       game->window_width, game->window_height,
       SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALWAYS_ON_TOP);
   if (!game->window) {
-    fprintf(stderr, "[ERROR] SDL failed to create window: %s\n",
+    fprintf(stderr, "\033[31m[ERROR] SDL failed to create window: %s\033[0m\n",
             SDL_GetError());
     SDL_Quit();
     return 1;
@@ -101,7 +103,8 @@ int SDL_initialize(Game *game) {
 
   game->renderer = SDL_CreateRenderer(game->window, -1, 0);
   if (!game->renderer) {
-    fprintf(stderr, "[ERROR] SDL failed to create renderer: %s\n",
+    fprintf(stderr,
+            "\033[31m[ERROR] SDL failed to create renderer: %s\033[0m\n",
             SDL_GetError());
     SDL_DestroyWindow(game->window);
     SDL_Quit();
@@ -115,7 +118,8 @@ int SDL_initialize(Game *game) {
       SDL_TEXTUREACCESS_STREAMING, RENDER_WIDTH, RENDER_HEIGHT);
 
   if (!game->screen_texture) {
-    fprintf(stderr, "[ERROR] Failed to create texture: %s\n", SDL_GetError());
+    fprintf(stderr, "\033[31m[ERROR] Failed to create texture: %s\033[0m\n",
+            SDL_GetError());
     return 1;
   }
 

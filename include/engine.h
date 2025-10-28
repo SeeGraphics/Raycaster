@@ -22,6 +22,7 @@ typedef struct Engine {
   double time, oldTime;
   double deltaTime;
   int fps;
+  int frameCount;
 } Engine;
 
 int engine_init(Engine *engine);

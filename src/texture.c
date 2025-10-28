@@ -13,7 +13,7 @@ int textures_load(TextureManager *tm) {
   for (int i = 0; i < NUM_TEXTURES; i++) {
     tm->textures[i] = malloc(TEXT_WIDTH * TEXT_HEIGHT * sizeof(u32));
     if (!tm->textures[i]) {
-      fprintf(stderr, "[ERROR] Couldn't allocate texture %d", i);
+      fprintf(stderr, "\033[31mFailed to allocate texture:: %d\033[0m\n", i);
       free(tm->textures[i]);
       return 1;
     }
@@ -26,7 +26,7 @@ int textures_load(TextureManager *tm) {
 void loadImage(u32 *texture, int width, int height, const char *filename) {
   SDL_Surface *surface = IMG_Load(filename);
   if (!surface) {
-    fprintf(stderr, "[ERROR] Failed to load %s: %s\n", filename,
+    fprintf(stderr, "\033[31mFailed to load %s: %s\033[0m\n", filename,
             IMG_GetError());
     return;
   }
@@ -36,8 +36,8 @@ void loadImage(u32 *texture, int width, int height, const char *filename) {
   SDL_FreeSurface(surface);
 
   if (!converted) {
-    fprintf(stderr, "[ERROR] Failed to convert %s: %s\n", filename,
-            SDL_GetError());
+    fprintf(stderr, "\033[31m[ERROR] Failed to convert %s: %s\033[0m\n",
+            filename, SDL_GetError());
     return;
   }
 
@@ -53,7 +53,7 @@ void loadImage(u32 *texture, int width, int height, const char *filename) {
   }
 
   SDL_FreeSurface(converted);
-  printf("[TEXTURE] Loaded texture: %s\n", filename);
+  printf("\033[32m[TEXTURE] Loaded texture: %s\033[0m\n", filename);
 }
 
 void loadArrays(TextureManager *tm, int texWidth, int texHeight) {
@@ -78,7 +78,7 @@ void loadArrays(TextureManager *tm, int texWidth, int texHeight) {
 
   // Load animations?
 
-  printf("[TEXTURE] Textures loaded...\n");
+  printf("\033[32m[TEXTURE] Textures loaded...\033[0m\n");
 }
 
 int getTextureIndexByName(const char *name) {

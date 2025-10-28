@@ -23,7 +23,6 @@ typedef enum {
   SHOTGUN,
   ROCKET,
   PISTOL,
-  HANDS,
   SINGLE,
   MINIGUN,
   TOTAL_GUNS,

@@ -2,13 +2,14 @@
 #include <stdio.h>
 
 SoundManager createSound() {
-  SoundManager s = {NULL, NULL, NULL, NULL};
+  SoundManager s = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
   return s;
 }
 
 int initSound() {
   if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
-    printf("[ERROR] SDL_mixer could not initialize! SDL_mixer Error: %s\n",
+    printf("\033[31m[ERROR] SDL_mixer could not initialize! SDL_mixer Error: "
+           "%s\033[0m\n",
            Mix_GetError());
     return -1;
   }
@@ -18,9 +19,10 @@ int initSound() {
 Mix_Chunk *loadSound(const char *path) {
   Mix_Chunk *sound = Mix_LoadWAV(path);
   if (!sound) {
-    fprintf(stderr, "[ERROR] Failed to load %s: %s\n", path, Mix_GetError());
+    fprintf(stderr, "\033[31m[ERROR] Failed to load %s: %s\033[0m\n", path,
+            Mix_GetError());
   } else {
-    fprintf(stderr, "[SOUND] Loaded sound: %s\n", path);
+    fprintf(stderr, "\033[32m[SOUND] Loaded sound: %s\033[0m\n", path);
   }
   return sound;
 }
@@ -28,9 +30,10 @@ Mix_Chunk *loadSound(const char *path) {
 Mix_Music *loadTrack(const char *path) {
   Mix_Music *track = Mix_LoadMUS(path);
   if (!track) {
-    fprintf(stderr, "[ERROR] Failed to track %s: %s\n", path, Mix_GetError());
+    fprintf(stderr, "\033[31m[ERROR] Failed to track %s: %s\033[0m\n", path,
+            Mix_GetError());
   } else {
-    fprintf(stderr, "[SOUND] Loaded track: %s\n", path);
+    fprintf(stderr, "\033[32m[SOUND] Loaded track: %s\033[0m\n", path);
   }
   return track;
 }
@@ -51,7 +54,7 @@ void loadSounds(SoundManager *soundManager) {
       loadSound("assets/sounds/weapons/minigun/minigun_shoot.wav");
 
   Mix_Volume(-1, SFX_VOL);
-  printf("[SOUND] Sounds loaded...\n");
+  printf("\033[32m[SOUND] Sounds loaded...\033[0m\n");
 }
 
 void loadMusic(SoundManager *soundManager) {
@@ -59,7 +62,7 @@ void loadMusic(SoundManager *soundManager) {
       loadTrack("assets/sounds/music/Soundtrack_intense.mp3");
 
   Mix_VolumeMusic(MUSIC_VOL);
-  printf("[SOUND] Tracks loaded...\n");
+  printf("\033[32m[SOUND] Tracks loaded...\033[0m\n");
 }
 
 /* PLAY SOUNDS *************************************************************/

@@ -2,6 +2,14 @@
 #include "engine.h"
 #include "map.h"
 
+static inline float clamp(float value, float min, float max) {
+  if (value < min)
+    value = min;
+  if (value > max)
+    value = max;
+  return value;
+}
+
 void perform_raycasting(Engine *engine) {
   for (int x = 0; x < RENDER_WIDTH; x++) {
     double cameraX = 2 * x / (double)RENDER_WIDTH - 1;
@@ -89,8 +97,7 @@ void perform_raycasting(Engine *engine) {
       int texY = (int)texPos & (TEXT_HEIGHT - 1);
       texPos += step;
 
-      u32 color =
-          engine->textures.textures[texNum][texY * TEXT_WIDTH + texX];
+      u32 color = engine->textures.textures[texNum][texY * TEXT_WIDTH + texX];
 
       if (side == 1)
         color = (color >> 1) & 8355711;

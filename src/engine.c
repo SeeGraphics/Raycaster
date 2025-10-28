@@ -25,6 +25,7 @@ int engine_init(Engine *engine) {
   engine->oldTime = 0;
   engine->deltaTime = 0;
   engine->fps = 0;
+  engine->frameCount = 0;
 
   // Allocate buffers, load textures, animations
   buffers_init(&engine->game);
@@ -38,7 +39,7 @@ int engine_init(Engine *engine) {
 
   for (int i = 0; i < NUM_TEXTURES; i++) {
     if (!engine->textures.textures[i]) {
-      fprintf(stderr, "[WARNING] textures[%d] is NULL!\n", i);
+      fprintf(stderr, "\033[31m[WARNING] textures[%d] is NULL!\033[0m\n", i);
     }
   }
   // FPS Mouse
@@ -55,11 +56,11 @@ void engine_updateTime(Engine *engine) {
 }
 
 void engine_cleanup(Engine *engine, int exitCode) {
-  printf("[CLEANUP] Starting engine cleanup...\n");
+  printf("\033[32m[CLEANUP] Starting engine cleanup...\033[0m\n");
 
   freeAllAnimations();
 
-  printf("[CLEANUP] Freeing textures...\n");
+  printf("\033[32m[CLEANUP] Freeing textures...\033[0m\n");
   for (int i = 0; i < NUM_TEXTURES; i++) {
     if (engine->textures.textures[i]) {
       free(engine->textures.textures[i]);
@@ -67,10 +68,10 @@ void engine_cleanup(Engine *engine, int exitCode) {
     }
   }
 
-  printf("[CLEANUP] Cleaning up sound...\n");
+  printf("\033[32m[CLEANUP] Cleaning up sound...\033[0m\n");
   cleanupSound(&engine->sound);
 
-  printf("[CLEANUP] Closing fonts...\n");
+  printf("\033[32m[CLEANUP] Closing fonts...\033[0m\n");
   if (engine->font.debug) {
     TTF_CloseFont(engine->font.debug);
     engine->font.debug = NULL;
@@ -84,7 +85,8 @@ void engine_cleanup(Engine *engine, int exitCode) {
     engine->font.title = NULL;
   }
 
-  printf("[CLEANUP] Destroying SDL renderer, window, and texture...\n");
+  printf("\033[32m[CLEANUP] Destroying SDL renderer, window, and "
+         "texture...\033[0m\n");
   if (engine->game.renderer) {
     SDL_DestroyRenderer(engine->game.renderer);
     engine->game.renderer = NULL;
@@ -100,8 +102,8 @@ void engine_cleanup(Engine *engine, int exitCode) {
 
   SDL_Quit();
 
-  // 6️⃣ Free buffes
-  printf("[CLEANUP] Freeing game buffers...\n");
+  // Free buffes
+  printf("\033[32m[CLEANUP] Freeing game buffers...\033[0m\n");
   if (engine->game.buffer) {
     free(engine->game.buffer);
     engine->game.buffer = NULL;
@@ -115,6 +117,6 @@ void engine_cleanup(Engine *engine, int exitCode) {
     engine->game.Zbuffer = NULL;
   }
 
-  printf("[CLEANUP] Engine cleanup complete. Exiting.\n");
+  printf("\033[32m[CLEANUP] Engine cleanup complete. Exiting.\033[0m\n");
   exit(exitCode);
 }

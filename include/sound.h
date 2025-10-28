@@ -4,7 +4,7 @@
 #include "SDL_mixer.h"
 
 #define MUSIC_VOL 5
-#define SFX_VOL 50
+#define SFX_VOL 30
 
 typedef struct {
   Mix_Chunk *ShotgunShot;

@@ -36,14 +36,15 @@ int handleInput(Engine *engine, double deltaTime) {
           SDL_TEXTUREACCESS_STREAMING, RENDER_WIDTH, RENDER_HEIGHT);
 
       if (!engine->game.screen_texture) {
-        fprintf(stderr, "[ERROR] Failed to recreate texture: %s\n",
+        fprintf(stderr,
+                "\033[31m[ERROR] Failed to recreate texture: %s\033[0m\n",
                 SDL_GetError());
         engine_cleanup(engine, EXIT_FAILURE);
         return 1;
       }
 
-      printf("[WINDOW] Window resized to %dx%d\n", engine->game.window_width,
-             engine->game.window_height);
+      printf("\033[32m[WINDOW] Window resized to %dx%d\033[0m\n",
+             engine->game.window_width, engine->game.window_height);
     }
 
     /* KEY EVENTS */
@@ -74,9 +75,9 @@ int handleInput(Engine *engine, double deltaTime) {
       }
 
       // Reload
-      if (event.key.keysym.scancode == GUN_RELOAD) {
-        playShotgunReload(&engine->sound);
-      }
+      /* if (event.key.keysym.scancode == GUN_RELOAD) { */
+      /*   playShotgunReload(&engine->sound); */
+      /* } */
     }
 
     /* MOUSE EVENTS */
@@ -113,47 +114,51 @@ int handleInput(Engine *engine, double deltaTime) {
       if (event.button.button == MSB_LEFT) {
         engine->player.mouseHeld = 1;
         weaponProperties[engine->player.selectedGun].fireAccumulator = 0;
-        if (weaponProperties[engine->player.selectedGun].ammunition != -1) {
-          weaponProperties[engine->player.selectedGun].ammunition--;
-        }
-        switch (engine->player.selectedGun) {
-        case SHOTGUN:
-          if (!animations.shotgun_shoot.playing) {
-            animations.shotgun_shoot.playing = 1;
-            playShotgunShot(&engine->sound);
+
+        if (weaponProperties[engine->player.selectedGun].ammunition > 0) {
+          switch (engine->player.selectedGun) {
+          case SHOTGUN:
+            if (!animations.shotgun_shoot.playing) {
+              weaponProperties[engine->player.selectedGun].ammunition--;
+              animations.shotgun_shoot.playing = 1;
+              playShotgunShot(&engine->sound);
+            }
+            break;
+          case ROCKET:
+            if (!animations.rocket_shoot.playing) {
+              weaponProperties[engine->player.selectedGun].ammunition--;
+              animations.rocket_shoot.playing = 1;
+              playRocketShot(&engine->sound);
+            }
+            break;
+          case PISTOL:
+            if (!animations.pistol_shoot.playing) {
+              animations.pistol_shoot.playing = 1;
+              weaponProperties[engine->player.selectedGun].ammunition--;
+              playPistolShot(&engine->sound);
+            }
+            break;
+          /* case HANDS: */
+          /*   if (!animations.hands_punsh.playing) { */
+          /*     animations.hands_punsh.playing = 1; */
+          /*     playHandsPunsh(&engine->sound); */
+          /*   } */
+          /*   break; */
+          case SINGLE:
+            if (!animations.single_shoot.playing) {
+              animations.single_shoot.playing = 1;
+              weaponProperties[engine->player.selectedGun].ammunition--;
+              playSingleShot(&engine->sound);
+            }
+            break;
+          case MINIGUN:
+            if (!animations.minigun_shoot.playing) {
+              animations.minigun_shoot.playing = 1;
+              playMinigunShot(&engine->sound);
+            }
+          default:
+            break;
           }
-          break;
-        case ROCKET:
-          if (!animations.rocket_shoot.playing) {
-            animations.rocket_shoot.playing = 1;
-            playRocketShot(&engine->sound);
-          }
-          break;
-        case PISTOL:
-          if (!animations.pistol_shoot.playing) {
-            animations.pistol_shoot.playing = 1;
-            playPistolShot(&engine->sound);
-          }
-          break;
-        case HANDS:
-          if (!animations.hands_punsh.playing) {
-            animations.hands_punsh.playing = 1;
-            playHandsPunsh(&engine->sound);
-          }
-          break;
-        case SINGLE:
-          if (!animations.single_shoot.playing) {
-            animations.single_shoot.playing = 1;
-            playSingleShot(&engine->sound);
-          }
-          break;
-        case MINIGUN:
-          if (!animations.minigun_shoot.playing) {
-            animations.minigun_shoot.playing = 1;
-            playMinigunShot(&engine->sound);
-          }
-        default:
-          break;
         }
       }
     }
@@ -165,7 +170,8 @@ int handleInput(Engine *engine, double deltaTime) {
     }
   }
 
-  if (engine->player.mouseHeld) {
+  if (engine->player.mouseHeld &&
+      weaponProperties[engine->player.selectedGun].ammunition > 0) {
     WeaponProperties *weapon = &weaponProperties[engine->player.selectedGun];
     if (weapon->automatic) {
       weapon->fireAccumulator += deltaTime;
@@ -181,7 +187,7 @@ int handleInput(Engine *engine, double deltaTime) {
         }
       }
     }
-  } else if (!engine->player.mouseHeld) {
+  } else {
     engine->player.shooting = 0;
     animations.minigun_shoot.playing = 0;
   }

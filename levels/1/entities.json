@@ -1,0 +1,170 @@
+{
+  "decorations": [
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 4.5,
+      "y": 3.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 8.5,
+      "y": 4.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 15.5,
+      "y": 4.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 18.5,
+      "y": 4.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 7.5,
+      "y": 8.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 7.5,
+      "y": 16.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 16.5,
+      "y": 8.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 16.5,
+      "y": 16.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 6.5,
+      "y": 5.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 6.5,
+      "y": 6.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 17.5,
+      "y": 5.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 17.5,
+      "y": 6.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 9.5,
+      "y": 9.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 14.5,
+      "y": 9.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 4.5,
+      "y": 18.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 6.5,
+      "y": 18.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 9.5,
+      "y": 18.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 14.5,
+      "y": 16.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 17.5,
+      "y": 16.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 12.5,
+      "y": 20.5,
+      "scale": 1.0
+    }
+  ],
+  "pickups": [
+    {
+      "type": "pickup",
+      "texture": "MONEY",
+      "x": 12.5,
+      "y": 7.5,
+      "scale": 0.9
+    },
+    {
+      "type": "pickup",
+      "texture": "MONEY",
+      "x": 11.5,
+      "y": 15.5,
+      "scale": 0.9
+    }
+  ],
+  "enemies": [
+    {
+      "type": "enemy",
+      "animation": "DEMON_WALK",
+      "x": 15.5,
+      "y": 13.5,
+      "scale": 1.35,
+      "health": 100
+    }
+  ]
+}

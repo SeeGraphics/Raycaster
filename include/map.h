@@ -6,4 +6,7 @@
 
 extern int worldMap[MAP_WIDTH][MAP_HEIGHT];
 
+int map_loadFromCSV(const char *filepath);
+void map_resetToDefault(void);
+
 #endif

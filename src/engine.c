@@ -1,11 +1,16 @@
 #include "engine.h"
 #include "entities.h"
+#include "map.h"
 #include "sound.h"
+#include <stdio.h>
 
 int engine_init(Engine *engine) {
 
   engine->mode = GAME;
   engine->game = createGame();
+
+  if (map_loadFromCSV("levels/1/map.csv") != 0)
+    fprintf(stderr, "\033[33m[WARN] Using built-in map layout\033[0m\n");
 
   // SDL + TTF
   if (SDL_initialize(&engine->game))

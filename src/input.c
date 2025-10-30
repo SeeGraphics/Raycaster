@@ -1,6 +1,7 @@
 #include "input.h"
 #include "animation.h"
 #include "player.h"
+#include "enemies.h"
 #include "weapons.h"
 
 int mouseUngrabbed = 0;
@@ -134,6 +135,8 @@ int handleInput(Engine *engine, double deltaTime) {
               weaponProperties[engine->player.selectedGun].ammunition--;
               animations.shotgun_shoot.playing = 1;
               playShotgunShot(&engine->sound);
+              enemies_applyHitscanDamage(
+                  engine, weaponProperties[engine->player.selectedGun].damage);
             }
             break;
           case ROCKET:
@@ -141,6 +144,8 @@ int handleInput(Engine *engine, double deltaTime) {
               weaponProperties[engine->player.selectedGun].ammunition--;
               animations.rocket_shoot.playing = 1;
               playRocketShot(&engine->sound);
+              enemies_applyHitscanDamage(
+                  engine, weaponProperties[engine->player.selectedGun].damage);
             }
             break;
           case PISTOL:
@@ -148,6 +153,8 @@ int handleInput(Engine *engine, double deltaTime) {
               animations.pistol_shoot.playing = 1;
               weaponProperties[engine->player.selectedGun].ammunition--;
               playPistolShot(&engine->sound);
+              enemies_applyHitscanDamage(
+                  engine, weaponProperties[engine->player.selectedGun].damage);
             }
             break;
           /* case HANDS: */
@@ -161,6 +168,8 @@ int handleInput(Engine *engine, double deltaTime) {
               animations.single_shoot.playing = 1;
               weaponProperties[engine->player.selectedGun].ammunition--;
               playSingleShot(&engine->sound);
+              enemies_applyHitscanDamage(
+                  engine, weaponProperties[engine->player.selectedGun].damage);
             }
             break;
           case MINIGUN:
@@ -196,7 +205,12 @@ int handleInput(Engine *engine, double deltaTime) {
             playMinigunShot(&engine->sound);
           }
           break;
+        default:
+          break;
         }
+        enemies_applyHitscanDamage(engine,
+                                   weaponProperties[engine->player.selectedGun]
+                                       .damage);
       }
     }
   } else {

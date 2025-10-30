@@ -3,12 +3,15 @@
 
 #include "animation.h"
 #include "player.h"
+#include "types.h"
 
-typedef struct {
-  int automatic;
-  double fireRate;
-  double fireAccumulator;
-  int ammunition;
+typedef struct
+{
+  i32 automatic;
+  f64 fireRate;
+  f64 fireAccumulator;
+  i32 ammunition;
+  i32 damage;
 } WeaponProperties;
 
 extern WeaponProperties weaponProperties[TOTAL_GUNS];

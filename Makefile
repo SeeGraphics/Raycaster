@@ -9,7 +9,8 @@ BUILD_DIR = build
 
 # Files
 SOURCES = main.c engine.c input.c map.c graphics.c player.c camera.c \
-           raycast.c font.c texture.c sprites.c sound.c render.c animation.c weapons.c
+           raycast.c font.c texture.c sprites.c sound.c render.c animation.c \
+           weapons.c entities.c enemies.c
 OBJECTS = $(SOURCES:%.c=$(BUILD_DIR)/%.o)
 DEPS    = $(OBJECTS:.o=.d)
 TARGET  = $(BUILD_DIR)/raycast
@@ -34,4 +35,3 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 .PHONY: all run clean
-

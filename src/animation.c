@@ -98,30 +98,44 @@ void loadAllAnimations() { // 0 playing, 0 looping
   animations.minigun_idle =
       loadAnimation("assets/textures/weapons/minigun/idle", FRAMES_MINIGUN_IDLE,
                     FRAMETIME_MINIGUN_IDLE, 0, 0);
+  animations.demon_walk =
+      loadAnimation("assets/textures/entities/demon/walk", FRAMES_DEMON_WALK,
+                    FRAMETIME_DEMON_WALK, 1, 1);
 }
 
 void updateAnimation(Animation *animation, Player *player, double deltaTime) {
-  if (animation->playing) {
-    player->shooting = 1;
-    animation->timeAccumulator += deltaTime;
+  if (!animation)
+    return;
 
-    if (animation->timeAccumulator >= animation->frameTime) {
-      animation->timeAccumulator -= animation->frameTime;
-      animation->currentFrame++;
-
-      if (animation->currentFrame >= animation->frameCount) {
-        player->shooting = 0;
-        if (animation->looping) {
-          animation->currentFrame = 0;
-        } else {
-          animation->currentFrame = 0;
-          animation->playing = 0;
-        }
-      }
-    }
-  } else {
+  if (!animation->playing) {
+    if (player)
+      player->shooting = 0;
     return;
   }
+
+  if (player)
+    player->shooting = 1;
+
+  animation->timeAccumulator += deltaTime;
+  if (animation->timeAccumulator < animation->frameTime)
+    return;
+
+  animation->timeAccumulator -= animation->frameTime;
+  animation->currentFrame++;
+
+  if (animation->currentFrame < animation->frameCount)
+    return;
+
+  if (player)
+    player->shooting = 0;
+
+  if (animation->looping) {
+    animation->currentFrame = 0;
+    return;
+  }
+
+  animation->currentFrame = 0;
+  animation->playing = 0;
 }
 
 void updateAllAnimations(Player *player, double deltaTime) {
@@ -132,6 +146,7 @@ void updateAllAnimations(Player *player, double deltaTime) {
   updateAnimation(&animations.single_shoot, player, deltaTime);
   updateAnimation(&animations.minigun_shoot, player, deltaTime);
   updateAnimation(&animations.minigun_idle, player, deltaTime);
+  updateAnimation(&animations.demon_walk, NULL, deltaTime);
 }
 
 void blitFrame(u32 *buffer, Frame *frame, f32 width, f32 height, f32 x,
@@ -203,4 +218,5 @@ void freeAllAnimations() {
   freeAnimation(&animations.hands_punsh);
   freeAnimation(&animations.minigun_shoot);
   freeAnimation(&animations.minigun_idle);
+  freeAnimation(&animations.demon_walk);
 }

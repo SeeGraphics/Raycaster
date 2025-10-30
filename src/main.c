@@ -7,11 +7,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int main() {
+int main()
+{
   Engine engine;
   engine_init(&engine);
 
-  while (true) {
+  while (true)
+  {
     engine_updateTime(&engine);
     handleInput(&engine, engine.deltaTime);
 

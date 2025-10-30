@@ -1,4 +1,5 @@
 #include "engine.h"
+#include "entities.h"
 #include "sound.h"
 
 int engine_init(Engine *engine) {
@@ -18,7 +19,7 @@ int engine_init(Engine *engine) {
   engine->player = createPlayer();
   engine->textures = createTextures();
   engine->sound = createSound();
-  engine->sprites = createSprite();
+  engine->sprites = entities_createWorldSprites();
   engine->font = font_init();
 
   // Initialize Time variables

@@ -134,8 +134,8 @@ void updateAllAnimations(Player *player, double deltaTime) {
   updateAnimation(&animations.minigun_idle, player, deltaTime);
 }
 
-void blitFrame(u32 *buffer, Frame *frame, float width, float height, float x,
-               float y, float scale) {
+void blitFrame(u32 *buffer, Frame *frame, f32 width, f32 height, f32 x,
+               f32 y, f32 scale) {
 
   int scaled_height = (int)frame->height * scale;
   int scaled_width = (int)frame->width * scale;
@@ -152,7 +152,7 @@ void blitFrame(u32 *buffer, Frame *frame, float width, float height, float x,
       }
 
       int image_index = imgy * frame->width + imgx;
-      uint32_t color = frame->pixels[image_index];
+      u32 color = frame->pixels[image_index];
 
       if ((color & 0xFF000000) == 0) {
         continue;
@@ -164,8 +164,8 @@ void blitFrame(u32 *buffer, Frame *frame, float width, float height, float x,
   }
 }
 
-void blitAnimation(u32 *buffer, Animation *animation, float width, float height,
-                   float x, float y, float scale) {
+void blitAnimation(u32 *buffer, Animation *animation, f32 width, f32 height,
+                   f32 x, f32 y, f32 scale) {
   Frame *currentFrame = &animation->frames[animation->currentFrame];
 
   blitFrame(buffer, currentFrame, width, height, x, y, scale);

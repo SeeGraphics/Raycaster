@@ -119,7 +119,7 @@ void perform_spritecasting(Engine *engine) {
           texX &= (TEXT_WIDTH - 1);
           texY &= (TEXT_HEIGHT - 1);
 
-          Uint32 color =
+          u32 color =
               engine->textures.textures[texIndex][texY * TEXT_WIDTH + texX];
 
           // clamp tex coords

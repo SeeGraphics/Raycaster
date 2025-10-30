@@ -60,7 +60,7 @@ void renderText(u32 *buffer, TTF_Font *font, const char *message, int posx,
   SDL_FreeSurface(converted);
 }
 
-void renderFloatPair(u32 *Rbuffer, TTF_Font *font, const char *label, double x,
+void renderf32Pair(u32 *Rbuffer, TTF_Font *font, const char *label, double x,
                      double y, int xpos, int ypos, SDL_Color color) {
   char buffer[64];
   snprintf(buffer, sizeof(buffer), "%s %.2f %.2f", label, x, y);
@@ -74,7 +74,7 @@ void renderInt(u32 *Rbuffer, TTF_Font *font, const char *label, int value,
   renderText(Rbuffer, font, buffer, x, y, color);
 }
 
-void renderFloat(u32 *Rbuffer, TTF_Font *font, const char *label, double value,
+void renderf32(u32 *Rbuffer, TTF_Font *font, const char *label, double value,
                  int x, int y, SDL_Color color) {
   char buffer[32];
   snprintf(buffer, sizeof(buffer), "%s %.2f", label, value);

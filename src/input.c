@@ -76,7 +76,14 @@ int handleInput(Engine *engine, double deltaTime) {
 
       if (event.key.keysym.scancode == CYCLE_GAME) {
         engine->mode = (engine->mode + 1) % TOTAL_MODES;
-        printf("\033[35m[MODE] Current Game Mode: %d\033[0m\n", engine->mode);
+        switch (engine->mode) {
+        case 0:
+          printf("\033[35m[MODE] Current Game Mode: GAME\033[0m\n");
+          break;
+        case 1:
+          printf("\033[35m[MODE] Current Game Mode: DEBUG\033[0m\n");
+          break;
+        }
       }
 
       // Reload

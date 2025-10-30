@@ -52,8 +52,8 @@ extern AnimationRegistry animations;
 
 void loadAllAnimations();
 void updateAllAnimations(Player *player, double deltaTime);
-void blitAnimation(u32 *buffer, Animation *animation, float width, float height,
-                   float x, float y, float scale);
+void blitAnimation(u32 *buffer, Animation *animation, f32 width, f32 height,
+                   f32 x, f32 y, f32 scale);
 void freeAllAnimations();
 
 #endif

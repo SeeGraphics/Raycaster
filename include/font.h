@@ -19,11 +19,11 @@ Font font_init();
 
 void renderText(u32 *Rbuffer, TTF_Font *font, const char *message, int x, int y,
                 SDL_Color color);
-void renderFloatPair(u32 *Rbuffer, TTF_Font *font, const char *label, double x,
+void renderf32Pair(u32 *Rbuffer, TTF_Font *font, const char *label, double x,
                      double y, int xpos, int ypos, SDL_Color color);
 void renderInt(u32 *Rbuffer, TTF_Font *font, const char *label, int value,
                int x, int y, SDL_Color color);
-void renderFloat(u32 *Rbuffer, TTF_Font *font, const char *label, double value,
+void renderf32(u32 *Rbuffer, TTF_Font *font, const char *label, double value,
                  int x, int y, SDL_Color color);
 void renderProcent(u32 *Rbuffer, TTF_Font *font, int value, int x, int y,
                    SDL_Color color);

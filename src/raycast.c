@@ -2,7 +2,7 @@
 #include "engine.h"
 #include "map.h"
 
-static inline float clamp(float value, float min, float max) {
+static inline f32 clamp(f32 value, f32 min, f32 max) {
   if (value < min)
     value = min;
   if (value > max)
@@ -12,13 +12,18 @@ static inline float clamp(float value, float min, float max) {
 
 void perform_raycasting(Engine *engine) {
   for (int x = 0; x < RENDER_WIDTH; x++) {
+    // map x coordinates
     double cameraX = 2 * x / (double)RENDER_WIDTH - 1;
+
+    // ray calculation with camera plane and column
     double rayDirX = engine->player.dirX + engine->player.planeX * cameraX;
     double rayDirY = engine->player.dirY + engine->player.planeY * cameraX;
 
+    // map player pos to mapX and mapY
     int mapX = (int)engine->player.posX;
     int mapY = (int)engine->player.posY;
 
+    // DDA math
     double deltaDistX = (rayDirX == 0) ? 1e30 : fabs(1.0 / rayDirX);
     double deltaDistY = (rayDirY == 0) ? 1e30 : fabs(1.0 / rayDirY);
 
@@ -29,6 +34,7 @@ void perform_raycasting(Engine *engine) {
                            ? (engine->player.posY - mapY) * deltaDistY
                            : (mapY + 1.0 - engine->player.posY) * deltaDistY;
 
+    // either step in left or right direction
     int stepX = (rayDirX < 0) ? -1 : 1;
     int stepY = (rayDirY < 0) ? -1 : 1;
 
@@ -37,13 +43,13 @@ void perform_raycasting(Engine *engine) {
 
     while (!hit) {
       if (sideDistX < sideDistY) {
-        sideDistX += deltaDistX;
+        sideDistX += deltaDistX; // move to next horizontal grid line
         mapX += stepX;
-        side = 0;
+        side = 0; // vertical wall hit (NS)
       } else {
-        sideDistY += deltaDistY;
+        sideDistY += deltaDistY; // move to next vertical grid line
         mapY += stepY;
-        side = 1;
+        side = 1; // horizontal wall hit (EW)
       }
 
       if (mapX >= 0 && mapX < MAP_WIDTH && mapY >= 0 && mapY < MAP_HEIGHT &&
@@ -52,8 +58,10 @@ void perform_raycasting(Engine *engine) {
       }
     }
 
+    // calculate perpendicular walldist (no fisheye effect)
     double perpWallDist =
         (side == 0) ? sideDistX - deltaDistX : sideDistY - deltaDistY;
+    // wall size
     int lineHeight = (int)(RENDER_HEIGHT / perpWallDist);
 
     int drawStart =
@@ -66,7 +74,8 @@ void perform_raycasting(Engine *engine) {
     if (drawEnd >= RENDER_HEIGHT)
       drawEnd = RENDER_HEIGHT - 1;
 
-    // texturing math
+    // texturing
+    // get texture index in map array (-1 so we can use texture 0 as air)
     int texNum = worldMap[mapX][mapY] - 1;
 
     // calculate value of wallX
@@ -78,12 +87,14 @@ void perform_raycasting(Engine *engine) {
     wallX -= floor(wallX);
 
     // x coordinate on the texture
+    // flip texture depending on direction to not appear mirrored
     int texX = (int)(wallX * (double)TEXT_WIDTH);
     if (side == 0 && rayDirX > 0)
       texX = TEXT_WIDTH - texX - 1;
     if (side == 1 && rayDirY < 0)
       texX = TEXT_WIDTH - texX - 1;
 
+    // Vertical texture Sampling
     // How much to increase the texture coordinate per screen pixel
     double step = 1.0 * TEXT_HEIGHT / lineHeight;
 
@@ -113,10 +124,10 @@ void perform_floorcasting(Engine *engine) {
   // FLOOR CASTING
   for (int y = 0; y < RENDER_HEIGHT; y++) {
     // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
-    float rayDirX0 = engine->player.dirX - engine->player.planeX;
-    float rayDirY0 = engine->player.dirY - engine->player.planeY;
-    float rayDirX1 = engine->player.dirX + engine->player.planeX;
-    float rayDirY1 = engine->player.dirY + engine->player.planeY;
+    f32 rayDirX0 = engine->player.dirX - engine->player.planeX;
+    f32 rayDirY0 = engine->player.dirY - engine->player.planeY;
+    f32 rayDirX1 = engine->player.dirX + engine->player.planeX;
+    f32 rayDirY1 = engine->player.dirY + engine->player.planeY;
 
     // Current y position compared to the center of the screen (the horizon)
     int p = y - (int)engine->player.pitch - RENDER_HEIGHT / 2;
@@ -124,18 +135,18 @@ void perform_floorcasting(Engine *engine) {
       continue;
 
     // Vertical position of the camera
-    float posZ = 0.5 * RENDER_HEIGHT;
+    f32 posZ = 0.5 * RENDER_HEIGHT;
 
     // Horizontal distance from the camera to the floor for the current row
-    float rowDistance = posZ / abs(p);
+    f32 rowDistance = posZ / abs(p);
 
     // Calculate the real world step vector
-    float floorStepX = rowDistance * (rayDirX1 - rayDirX0) / RENDER_WIDTH;
-    float floorStepY = rowDistance * (rayDirY1 - rayDirY0) / RENDER_WIDTH;
+    f32 floorStepX = rowDistance * (rayDirX1 - rayDirX0) / RENDER_WIDTH;
+    f32 floorStepY = rowDistance * (rayDirY1 - rayDirY0) / RENDER_WIDTH;
 
     // Real world coordinates of the leftmost column
-    float floorX = engine->player.posX + rowDistance * rayDirX0;
-    float floorY = engine->player.posY + rowDistance * rayDirY0;
+    f32 floorX = engine->player.posX + rowDistance * rayDirX0;
+    f32 floorY = engine->player.posY + rowDistance * rayDirY0;
 
     for (int x = 0; x < RENDER_WIDTH; ++x) {
       // Get cell coordinates

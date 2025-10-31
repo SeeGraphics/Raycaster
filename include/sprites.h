@@ -17,7 +17,16 @@ typedef enum
   SPRITE_DECORATION = 0,
   SPRITE_PICKUP,
   SPRITE_ENEMY,
+  SPRITE_DECAL,
 } SpriteKind;
+
+typedef enum
+{
+  SPRITE_ACTION_NONE = 0,
+  SPRITE_ACTION_OPEN_DOOR = 1,
+} SpriteActionType;
+
+#define SPRITE_STATE_ACTIVATED (1 << 0)
 
 typedef enum
 {
@@ -50,6 +59,11 @@ typedef struct Sprite
   SpriteAppearance appearance;
   i32 active;
   i32 health;
+  i32 auxTextureId;
+  i32 targetX;
+  i32 targetY;
+  i32 actionType;
+  i32 stateFlags;
 } Sprite;
 
 // forward declaration

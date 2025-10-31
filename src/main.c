@@ -1,6 +1,7 @@
 #include "engine.h"
 #include "graphics.h"
 #include "input.h"
+#include "enemies.h"
 #include "raycast.h"
 #include "render.h"
 #include <stdbool.h>
@@ -10,13 +11,18 @@
 int main()
 {
   Engine engine;
-  engine_init(&engine);
+  if (engine_init(&engine) != 0)
+  {
+    fprintf(stderr, "\033[31m[ERROR] Engine initialization failed. Exiting.\033[0m\n");
+    return EXIT_FAILURE;
+  }
 
   while (true)
   {
     engine_updateTime(&engine);
     handleInput(&engine, engine.deltaTime);
 
+    enemies_update(&engine, engine.deltaTime);
     updateAllAnimations(&engine.player, engine.deltaTime);
     drawScene(&engine);
     SDL_RenderPresent(engine.game.renderer);

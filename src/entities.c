@@ -2,6 +2,9 @@
 #include "entities.h"
 #include "player.h"
 #include "raycast.h"
+#include "texture.h"
+#include "map.h"
+#include "engine.h"
 #include "types.h"
 #include <ctype.h>
 #include <math.h>
@@ -12,6 +15,47 @@
 static Sprite worldSprites[NUM_SPRITES];
 static i32 worldSpriteCount = 0;
 static int worldInitialized = 0;
+
+typedef struct
+{
+  const char *name;
+  int x;
+  int y;
+} LeverFacingDef;
+
+static const LeverFacingDef g_leverFacingDefs[] = {
+    {"EAST", 1, 0},
+    {"WEST", -1, 0},
+    {"SOUTH", 0, 1},
+    {"NORTH", 0, -1},
+};
+static const int g_leverFacingDefCount =
+    (int)(sizeof(g_leverFacingDefs) / sizeof(g_leverFacingDefs[0]));
+
+typedef struct
+{
+  float interactX;
+  float interactY;
+  float leverX;
+  float leverY;
+  int doorX;
+  int doorY;
+  int tileX;
+  int tileY;
+  int offTextureId;
+  int onTextureId;
+  int activated;
+  int normalX;
+  int normalY;
+  int openTileValue;
+  int originalTileValue;
+} LeverInstance;
+
+static LeverInstance *g_levers = NULL;
+static int g_leverCount = 0;
+static int g_leverCapacity = 0;
+static int g_leverDoorMap[MAP_WIDTH][MAP_HEIGHT];
+static int g_leverTileMap[MAP_WIDTH][MAP_HEIGHT];
 
 static double g_playerSpawnX = POS_X;
 static double g_playerSpawnY = POS_Y;
@@ -34,6 +78,157 @@ static void entities_resetSpawnToDefaults(void)
 
 static Animation *animation_from_name(const char *name);
 
+typedef struct
+{
+  const char *jsonName;
+  const char *offTextureName;
+  const char *onTextureName;
+} DecalDefinition;
+
+static const DecalDefinition g_decalDefinitions[] = {
+    {"LEVER", "LeverOff", "LeverOn"},
+};
+static const int g_decalDefinitionCount =
+    (int)(sizeof(g_decalDefinitions) / sizeof(g_decalDefinitions[0]));
+
+static int decal_definition_index(const char *jsonName)
+{
+  if (!jsonName)
+    return -1;
+  for (int i = 0; i < g_decalDefinitionCount; ++i)
+  {
+    if (strcmp(g_decalDefinitions[i].jsonName, jsonName) == 0)
+      return i;
+  }
+  return -1;
+}
+
+static void lever_ensureCapacity(int required)
+{
+  if (required <= g_leverCapacity)
+    return;
+  int newCap = g_leverCapacity ? g_leverCapacity * 2 : 8;
+  while (newCap < required)
+    newCap *= 2;
+  LeverInstance *newData = (LeverInstance *)realloc(g_levers, newCap * sizeof(LeverInstance));
+  if (!newData)
+    return;
+  g_levers = newData;
+  g_leverCapacity = newCap;
+}
+
+static int lever_equalsIgnoreCase(const char *a, const char *b)
+{
+  while (*a && *b)
+  {
+    if (toupper((unsigned char)*a) != toupper((unsigned char)*b))
+      return 0;
+    ++a;
+    ++b;
+  }
+  return *a == '\0' && *b == '\0';
+}
+
+static int lever_parseFacing(const char *value, int *outX, int *outY)
+{
+  if (!value || !outX || !outY)
+    return -1;
+
+  for (int i = 0; i < g_leverFacingDefCount; ++i)
+  {
+    const LeverFacingDef *def = &g_leverFacingDefs[i];
+    if (lever_equalsIgnoreCase(value, def->name))
+    {
+      *outX = def->x;
+      *outY = def->y;
+      return i;
+    }
+    if (value[0] != '\0' && value[1] == '\0')
+    {
+      char abbrev[2] = {def->name[0], '\0'};
+      if (lever_equalsIgnoreCase(value, abbrev))
+      {
+        *outX = def->x;
+        *outY = def->y;
+        return i;
+      }
+    }
+  }
+
+  return -1;
+}
+
+static void lever_clear(void)
+{
+  g_leverCount = 0;
+  for (int x = 0; x < MAP_WIDTH; ++x)
+    for (int y = 0; y < MAP_HEIGHT; ++y)
+    {
+      g_leverDoorMap[x][y] = -1;
+      g_leverTileMap[x][y] = -1;
+    }
+}
+
+static void lever_alignPosition(LeverInstance *lever)
+{
+  if (!lever)
+    return;
+  static const int dirs[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+  if (lever->tileX < 0 || lever->tileY < 0 || lever->tileX >= MAP_WIDTH ||
+      lever->tileY >= MAP_HEIGHT)
+    return;
+
+  float leverCenterX = (float)lever->tileX + 0.5f;
+  float leverCenterY = (float)lever->tileY + 0.5f;
+  lever->leverX = leverCenterX;
+  lever->leverY = leverCenterY;
+
+  int dirX = lever->normalX;
+  int dirY = lever->normalY;
+
+  if (dirX == 0 && dirY == 0)
+  {
+    for (int i = 0; i < 4; ++i)
+    {
+      int nx = lever->tileX + dirs[i][0];
+      int ny = lever->tileY + dirs[i][1];
+      if (nx < 0 || ny < 0 || nx >= MAP_WIDTH || ny >= MAP_HEIGHT)
+        continue;
+      if (worldMap[nx][ny] != 0)
+        continue;
+      dirX = dirs[i][0];
+      dirY = dirs[i][1];
+      break;
+    }
+  }
+
+  if (dirX > 1)
+    dirX = 1;
+  if (dirX < -1)
+    dirX = -1;
+  if (dirY > 1)
+    dirY = 1;
+  if (dirY < -1)
+    dirY = -1;
+
+  lever->normalX = dirX;
+  lever->normalY = dirY;
+
+  if (dirX == 0 && dirY == 0)
+  {
+    lever->interactX = leverCenterX;
+    lever->interactY = leverCenterY;
+    return;
+  }
+
+  float offset = 0.45f;
+  lever->interactX = leverCenterX + dirX * offset;
+  lever->interactY = leverCenterY + dirY * offset;
+
+  lever->tileX = (int)floor(lever->leverX);
+  lever->tileY = (int)floor(lever->leverY);
+}
+
 static Sprite sprite_make(f64 x, f64 y, SpriteKind kind,
                           SpriteAppearance appearance, f32 scale, i32 health)
 {
@@ -45,6 +240,11 @@ static Sprite sprite_make(f64 x, f64 y, SpriteKind kind,
   sprite.appearance = appearance;
   sprite.active = 1;
   sprite.health = health;
+  sprite.auxTextureId = -1;
+  sprite.targetX = -1;
+  sprite.targetY = -1;
+  sprite.actionType = 0;
+  sprite.stateFlags = 0;
   return sprite;
 }
 
@@ -68,6 +268,11 @@ static void fill_unused_slots(void)
     worldSprites[i].appearance = spriteAppearanceFromTexture(TEX_GREENLIGHT);
     worldSprites[i].active = 0;
     worldSprites[i].health = 0;
+    worldSprites[i].auxTextureId = -1;
+    worldSprites[i].targetX = -1;
+    worldSprites[i].targetY = -1;
+    worldSprites[i].actionType = 0;
+    worldSprites[i].stateFlags = 0;
   }
 }
 
@@ -75,6 +280,7 @@ static void entities_populateDefaults(void)
 {
   worldSpriteCount = 0;
   entities_resetSpawnToDefaults();
+  lever_clear();
 
   static const struct
   {
@@ -487,6 +693,224 @@ static int parse_enemy_object(const char *start, const char *end)
   return 0;
 }
 
+static int parse_decal_object(const char *start, const char *end)
+{
+  double x = 0.0;
+  double y = 0.0;
+  double doorX = 0.0;
+  double doorY = 0.0;
+  char typeName[32];
+
+  if (json_get_double(start, end, "x", &x) != 1 ||
+      json_get_double(start, end, "y", &y) != 1)
+  {
+    fprintf(stderr,
+            "\033[31m[ERROR] Decal must contain numeric 'x' and 'y'\033[0m\n");
+    return -1;
+  }
+
+  if (json_get_string(start, end, "type", typeName, sizeof(typeName)) != 1)
+  {
+    fprintf(stderr, "\033[31m[ERROR] Decal must contain string 'type'\033[0m\n");
+    return -1;
+  }
+
+  int typeIndex = decal_definition_index(typeName);
+  if (typeIndex < 0)
+  {
+    fprintf(stderr, "\033[31m[ERROR] Unknown decal type '%s'\033[0m\n", typeName);
+    return -1;
+  }
+
+  if (json_get_double(start, end, "door_x", &doorX) != 1 ||
+      json_get_double(start, end, "door_y", &doorY) != 1)
+  {
+    fprintf(stderr,
+            "\033[31m[ERROR] Decal must contain numeric 'door_x' and 'door_y'\033[0m\n");
+    return -1;
+  }
+
+  const DecalDefinition *definition = &g_decalDefinitions[typeIndex];
+  int offTextureId = getTextureIndexByName(definition->offTextureName);
+  int onTextureId = getTextureIndexByName(definition->onTextureName);
+  if (offTextureId < 0 || onTextureId < 0)
+  {
+    fprintf(stderr,
+            "\033[31m[ERROR] Decal textures for '%s' not found\033[0m\n",
+            typeName);
+    return -1;
+  }
+
+  lever_ensureCapacity(g_leverCount + 1);
+  if (!g_levers)
+    return -1;
+
+  int tileX = (int)floor(x);
+  int tileY = (int)floor(y);
+  if (tileX < 0 || tileX >= MAP_WIDTH || tileY < 0 || tileY >= MAP_HEIGHT)
+  {
+    fprintf(stderr,
+            "\033[31m[ERROR] Decal coordinates (%.2f, %.2f) out of bounds\033[0m\n",
+            x, y);
+    return -1;
+  }
+
+  int doorTileX = (int)doorX;
+  int doorTileY = (int)doorY;
+  if (doorTileX < 0 || doorTileX >= MAP_WIDTH || doorTileY < 0 ||
+      doorTileY >= MAP_HEIGHT)
+  {
+    fprintf(stderr,
+            "\033[31m[ERROR] Decal door coordinates (%d, %d) out of bounds\033[0m\n",
+            doorTileX, doorTileY);
+    return -1;
+  }
+
+  int facingX = 0;
+  int facingY = 0;
+  char facingName[16];
+  int facingIndex = -1;
+  if (json_get_string(start, end, "facing", facingName, sizeof(facingName)) == 1)
+  {
+    facingIndex = lever_parseFacing(facingName, &facingX, &facingY);
+    if (facingIndex < 0)
+    {
+      fprintf(stderr,
+              "\033[31m[ERROR] Unknown decal facing '%s'\033[0m\n", facingName);
+      return -1;
+    }
+  }
+
+  double openTileValue = 0.0;
+  int hasOpenTile = json_get_double(start, end, "open_tile", &openTileValue) == 1;
+
+  LeverInstance lever;
+  memset(&lever, 0, sizeof(lever));
+  lever.doorX = doorTileX;
+  lever.doorY = doorTileY;
+  lever.tileX = tileX;
+  lever.tileY = tileY;
+  lever.leverX = (float)tileX + 0.5f;
+  lever.leverY = (float)tileY + 0.5f;
+  lever.offTextureId = offTextureId;
+  lever.onTextureId = onTextureId;
+  lever.activated = 0;
+  lever.normalX = facingX;
+  lever.normalY = facingY;
+  lever.originalTileValue =
+      (doorTileX >= 0 && doorTileX < MAP_WIDTH && doorTileY >= 0 && doorTileY < MAP_HEIGHT)
+          ? worldMap[doorTileX][doorTileY]
+          : 0;
+  if (lever.originalTileValue <= 0)
+  {
+    lever.doorX = lever.tileX;
+    lever.doorY = lever.tileY;
+    if (lever.doorX >= 0 && lever.doorX < MAP_WIDTH && lever.doorY >= 0 &&
+        lever.doorY < MAP_HEIGHT)
+      lever.originalTileValue = worldMap[lever.doorX][lever.doorY];
+    else
+      lever.originalTileValue = 0;
+  }
+  lever.openTileValue = hasOpenTile ? (int)openTileValue : 0;
+
+  lever_alignPosition(&lever);
+
+  if (lever.tileX < 0 || lever.tileY < 0 || lever.tileX >= MAP_WIDTH ||
+      lever.tileY >= MAP_HEIGHT)
+  {
+    fprintf(stderr,
+            "\033[31m[ERROR] Lever position out of bounds (%d,%d)\033[0m\n",
+            lever.tileX, lever.tileY);
+    return -1;
+  }
+
+  if (worldMap[lever.tileX][lever.tileY] <= 0)
+  {
+    fprintf(stderr,
+            "\033[33m[WARN] Lever placed on non-wall tile (%d,%d)\033[0m\n",
+            lever.tileX, lever.tileY);
+  }
+
+  int index = g_leverCount;
+  g_levers[index] = lever;
+  g_leverDoorMap[doorTileX][doorTileY] = index;
+  g_leverTileMap[lever.tileX][lever.tileY] = index;
+  g_leverCount++;
+
+  return 0;
+}
+
+void entities_tryInteract(Engine *engine)
+{
+  if (!engine)
+    return;
+
+  const double interactRangeSq = 1.4 * 1.4;
+  double px = engine->player.posX;
+  double py = engine->player.posY;
+  double dirX = engine->player.dirX;
+  double dirY = engine->player.dirY;
+
+  for (int i = 0; i < g_leverCount; ++i)
+  {
+    LeverInstance *lever = &g_levers[i];
+    double dx = lever->interactX - px;
+    double dy = lever->interactY - py;
+    double distSq = dx * dx + dy * dy;
+    if (distSq > interactRangeSq)
+      continue;
+
+    double forward = dx * dirX + dy * dirY;
+    if (forward <= 0.0)
+      continue;
+
+    lever->activated = !lever->activated;
+    if (lever->doorX >= 0 && lever->doorX < MAP_WIDTH &&
+        lever->doorY >= 0 && lever->doorY < MAP_HEIGHT)
+    {
+      if (!lever->activated)
+      {
+        double doorCenterX = (double)lever->doorX + 0.5;
+        double doorCenterY = (double)lever->doorY + 0.5;
+        double playerDx = engine->player.posX - doorCenterX;
+        double playerDy = engine->player.posY - doorCenterY;
+        const double clearance = 0.42;
+        bool playerInsideTile =
+            ((int)engine->player.posX == lever->doorX &&
+             (int)engine->player.posY == lever->doorY) ||
+            (fabs(playerDx) < clearance && fabs(playerDy) < clearance);
+        if (playerInsideTile)
+        {
+          lever->activated = 1;
+          worldMap[lever->doorX][lever->doorY] = lever->openTileValue;
+          continue;
+        }
+      }
+
+      int newValue =
+          lever->activated ? lever->openTileValue : lever->originalTileValue;
+      worldMap[lever->doorX][lever->doorY] = newValue;
+    }
+  }
+}
+
+int entities_getLeverTextureAtFace(int tileX, int tileY, int faceX, int faceY,
+                                   int *outActivated)
+{
+  if (tileX < 0 || tileY < 0 || tileX >= MAP_WIDTH || tileY >= MAP_HEIGHT)
+    return -1;
+  int index = g_leverTileMap[tileX][tileY];
+  if (index < 0 || index >= g_leverCount)
+    return -1;
+  const LeverInstance *lever = &g_levers[index];
+  if ((lever->normalX != 0 || lever->normalY != 0) &&
+      (lever->normalX != faceX || lever->normalY != faceY))
+    return -1;
+  if (outActivated)
+    *outActivated = lever->activated;
+  return lever->activated ? lever->onTextureId : lever->offTextureId;
+}
+
 static int parse_entity_array(const char *json, const char *sectionName,
                               int (*parser)(const char *, const char *))
 {
@@ -569,6 +993,7 @@ static int entities_loadFromJSONFile(const char *path)
 
   worldSpriteCount = 0;
   int result = 0;
+  lever_clear();
 
   if (parse_entity_array(buffer, "decorations", parse_decoration_object) != 0)
     result = -1;
@@ -579,6 +1004,10 @@ static int entities_loadFromJSONFile(const char *path)
 
   if (result == 0 &&
       parse_entity_array(buffer, "enemies", parse_enemy_object) != 0)
+    result = -1;
+
+  if (result == 0 &&
+      parse_entity_array(buffer, "decals", parse_decal_object) != 0)
     result = -1;
 
   free(buffer);
@@ -636,5 +1065,6 @@ void entities_reset(void)
 {
   worldInitialized = 0;
   worldSpriteCount = 0;
+  lever_clear();
   entities_resetSpawnToDefaults();
 }

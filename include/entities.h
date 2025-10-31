@@ -4,10 +4,15 @@
 #include "sprites.h"
 #include "types.h"
 
+struct Engine;
+
 Sprite *entities_createWorldSprites(void);
 Sprite *entities_getSprites(void);
 i32 entities_getSpriteCount(void);
 void entities_reset(void);
 void entities_getPlayerSpawn(double *outX, double *outY, double *outDirDegrees);
+void entities_tryInteract(struct Engine *engine);
+int entities_getLeverTextureAtFace(int tileX, int tileY, int faceX, int faceY,
+                                   int *outActivated);
 
 #endif

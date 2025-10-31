@@ -1,0 +1,6 @@
+[DEBUG] main: before engine_init
+2025-10-31 19:00:13.423 raycast[27640:11420836] Failure on line 688 in function id scheduleApplicationNotification(LSNotificationCode, NSWorkspaceNotificationCenter *): noErr == _LSModifyNotification(notificationID, 1, &code, 0, NULL, NULL, NULL)
+2025-10-31 19:00:13.499 raycast[27640:11420836] Error received in message reply handler: Connection invalid
+2025-10-31 19:00:13.499 raycast[27640:11420876] Connection Invalid error for service com.apple.hiservices-xpcservice.
+[31m[ERROR] SDL failed to initialize: The video driver did not add any displays[0m
+[ERROR] Engine initialization failed. Exiting.

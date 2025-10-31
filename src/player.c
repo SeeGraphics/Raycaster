@@ -8,7 +8,7 @@ static bool player_overlaps_enemy(f64 x, f64 y, Sprite *sprites,
                                   int spriteCount)
 {
   const double playerRadius = 0.23;
-  const double enemyBaseRadius = 0.35;
+  const double enemyBaseRadius = 0.25;
 
   for (int i = 0; i < spriteCount; ++i)
   {

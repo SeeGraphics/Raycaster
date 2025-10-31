@@ -1,12 +1,15 @@
 #include "raycast.h"
 #include "engine.h"
 #include "map.h"
+#include "entities.h"
 
 int g_floorTextureId = 3;
 int g_ceilingTextureId = 6;
 
-void perform_raycasting(Engine *engine) {
-  for (int x = 0; x < RENDER_WIDTH; x++) {
+void perform_raycasting(Engine *engine)
+{
+  for (int x = 0; x < RENDER_WIDTH; x++)
+  {
     // map x coordinates
     double cameraX = 2 * x / (double)RENDER_WIDTH - 1;
 
@@ -36,19 +39,24 @@ void perform_raycasting(Engine *engine) {
     int hit = 0;
     int side;
 
-    while (!hit) {
-      if (sideDistX < sideDistY) {
+    while (!hit)
+    {
+      if (sideDistX < sideDistY)
+      {
         sideDistX += deltaDistX; // move to next horizontal grid line
         mapX += stepX;
         side = 0; // vertical wall hit (NS)
-      } else {
+      }
+      else
+      {
         sideDistY += deltaDistY; // move to next vertical grid line
         mapY += stepY;
         side = 1; // horizontal wall hit (EW)
       }
 
       if (mapX >= 0 && mapX < MAP_WIDTH && mapY >= 0 && mapY < MAP_HEIGHT &&
-          worldMap[mapX][mapY] > 0) {
+          worldMap[mapX][mapY] > 0)
+      {
         hit = 1;
       }
     }
@@ -98,8 +106,16 @@ void perform_raycasting(Engine *engine) {
                      lineHeight / 2) *
                     step;
 
+    int faceX = 0;
+    int faceY = 0;
+    if (side == 0)
+      faceX = -stepX;
+    else
+      faceY = -stepY;
+
     // Draw the textured vertical line
-    for (int y = drawStart; y < drawEnd; y++) {
+    for (int y = drawStart; y < drawEnd; y++)
+    {
       int texY = (int)texPos & (TEXT_HEIGHT - 1);
       texPos += step;
 
@@ -108,6 +124,35 @@ void perform_raycasting(Engine *engine) {
       if (side == 1)
         color = (color >> 1) & 8355711;
 
+      int leverTexIndex =
+          entities_getLeverTextureAtFace(mapX, mapY, faceX, faceY, NULL);
+      if (leverTexIndex >= 0)
+      {
+        const u32 *leverTex = engine->textures.textures[leverTexIndex];
+        if (leverTex)
+        {
+          const float coverageX = 0.3f;
+          const float coverageY = 0.35f;
+          float u = ((float)texX + 0.5f) / (float)TEXT_WIDTH;
+          float v = ((float)texY + 0.5f) / (float)TEXT_HEIGHT;
+          float localU = (u - 0.5f) / coverageX + 0.5f;
+          float localV = (v - 0.5f) / coverageY + 0.5f;
+          if (localU >= 0.0f && localU <= 1.0f && localV >= 0.0f &&
+              localV <= 1.0f)
+          {
+            int sampleX = (int)(localU * (float)(TEXT_WIDTH - 1));
+            int sampleY = (int)(localV * (float)(TEXT_HEIGHT - 1));
+            if (sampleX >= 0 && sampleX < TEXT_WIDTH && sampleY >= 0 &&
+                sampleY < TEXT_HEIGHT)
+            {
+              u32 leverColor = leverTex[sampleY * TEXT_WIDTH + sampleX];
+              if ((leverColor & 0xFF000000u) != 0)
+                color = leverColor;
+            }
+          }
+        }
+      }
+
       engine->game.Rbuffer[y * RENDER_WIDTH + x] = color;
     }
     // set z-buffer for sprites
@@ -115,9 +160,11 @@ void perform_raycasting(Engine *engine) {
   }
 }
 
-void perform_floorcasting(Engine *engine) {
+void perform_floorcasting(Engine *engine)
+{
   // FLOOR CASTING
-  for (int y = 0; y < RENDER_HEIGHT; y++) {
+  for (int y = 0; y < RENDER_HEIGHT; y++)
+  {
     // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
     f32 rayDirX0 = engine->player.dirX - engine->player.planeX;
     f32 rayDirY0 = engine->player.dirY - engine->player.planeY;
@@ -143,7 +190,8 @@ void perform_floorcasting(Engine *engine) {
     f32 floorX = engine->player.posX + rowDistance * rayDirX0;
     f32 floorY = engine->player.posY + rowDistance * rayDirY0;
 
-    for (int x = 0; x < RENDER_WIDTH; ++x) {
+    for (int x = 0; x < RENDER_WIDTH; ++x)
+    {
       // Get cell coordinates
       int cellX = (int)(floorX);
       int cellY = (int)(floorY);
@@ -160,12 +208,15 @@ void perform_floorcasting(Engine *engine) {
       int ceilingTexture = g_ceilingTextureId;
       u32 color;
 
-      if (p > 0) {
+      if (p > 0)
+      {
         // Floor (below horizon)
         color = engine->textures.textures[floorTexture][TEXT_WIDTH * ty + tx];
         color = (color >> 1) & 8355711;
         engine->game.Rbuffer[y * RENDER_WIDTH + x] = color;
-      } else {
+      }
+      else
+      {
         // Ceiling (above horizon)
         color = engine->textures.textures[ceilingTexture][TEXT_WIDTH * ty + tx];
         color = (color >> 1) & 8355711;

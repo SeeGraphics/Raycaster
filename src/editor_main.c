@@ -19,8 +19,8 @@
 #include <string.h>
 
 #ifndef IM_COL32
-#define EDITOR_COL32(r, g, b, a)                                             \
-  (((ImU32)(a) << 24) | ((ImU32)(b) << 16) | ((ImU32)(g) << 8) |           \
+#define EDITOR_COL32(r, g, b, a)                                 \
+  (((ImU32)(a) << 24) | ((ImU32)(b) << 16) | ((ImU32)(g) << 8) | \
    (ImU32)(r))
 #else
 #define EDITOR_COL32 IM_COL32
@@ -45,11 +45,13 @@ typedef enum EditorMode
   EDIT_MODE_DECORATIONS,
   EDIT_MODE_PICKUPS,
   EDIT_MODE_ENEMIES,
+  EDIT_MODE_DECALS,
   EDIT_MODE_SPAWN
 } EditorMode;
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 #include "map.h"
 #ifdef __cplusplus
@@ -102,6 +104,14 @@ typedef struct PickupType
   float defaultScale;
 } PickupType;
 
+typedef struct DecalType
+{
+  const char *label;
+  const char *jsonName;
+  const char *textureOffName;
+  const char *textureOnName;
+} DecalType;
+
 static const DecorationType g_decorationTypes[] = {
     {"Green Light", "GREENLIGHT", "GreenLight", TEX_GREENLIGHT, 1.0f},
     {"Pillar", "PILLAR", "Pillar", TEX_PILLAR, 1.0f},
@@ -116,6 +126,23 @@ static const PickupType g_pickupTypes[] = {
 static const int g_pickupTypeCount =
     (int)(sizeof(g_pickupTypes) / sizeof(g_pickupTypes[0]));
 
+static const DecalType g_decalTypes[] = {
+    {"Lever", "LEVER", "LeverOff", "LeverOn"},
+};
+static const int g_decalTypeCount =
+    (int)(sizeof(g_decalTypes) / sizeof(g_decalTypes[0]));
+
+static const char *g_decalFacingLabels[] = {"East", "West", "South", "North"};
+static const char *g_decalFacingJson[] = {"EAST", "WEST", "SOUTH", "NORTH"};
+static const int g_decalFacingVectors[][2] = {
+    {1, 0},
+    {-1, 0},
+    {0, 1},
+    {0, -1},
+};
+static const int g_decalFacingCount =
+    (int)(sizeof(g_decalFacingLabels) / sizeof(g_decalFacingLabels[0]));
+
 typedef struct EditorDecoration
 {
   float x, y;
@@ -129,6 +156,18 @@ typedef struct EditorPickup
   float scale;
   int typeIndex;
 } EditorPickup;
+
+typedef struct EditorDecal
+{
+  float x, y;
+  int typeIndex;
+  int doorX;
+  int doorY;
+  int activated;
+  int facingIndex;
+  int tileX;
+  int tileY;
+} EditorDecal;
 
 static int editor_findDecorationTypeByJson(const char *jsonName)
 {
@@ -146,6 +185,16 @@ static int editor_findPickupTypeByJson(const char *jsonName)
     return -1;
   for (int i = 0; i < g_pickupTypeCount; ++i)
     if (strcmp(g_pickupTypes[i].jsonName, jsonName) == 0)
+      return i;
+  return -1;
+}
+
+static int editor_findDecalTypeByJson(const char *jsonName)
+{
+  if (!jsonName)
+    return -1;
+  for (int i = 0; i < g_decalTypeCount; ++i)
+    if (strcmp(g_decalTypes[i].jsonName, jsonName) == 0)
       return i;
   return -1;
 }
@@ -183,10 +232,13 @@ static int g_selectedDecorationType = 0;
 static int g_selectedPickupType = 0;
 static int g_selectedDecorationIndex = -1;
 static int g_selectedPickupIndex = -1;
+static int g_selectedDecalType = 0;
+static int g_selectedDecalIndex = -1;
 static v2f g_playerSpawnPos = {1.5f, 1.5f};
 static f32 g_playerSpawnDirDegrees = 90.0f;
 static const v2f g_defaultPlayerSpawnPos = {1.5f, 1.5f};
 static const f32 g_defaultPlayerSpawnDirDegrees = 90.0f;
+static int g_pendingDoorAssignmentIndex = -1;
 
 static EditorDecoration *g_decorations = NULL;
 static int g_decorationCount = 0;
@@ -195,6 +247,10 @@ static int g_decorationCapacity = 0;
 static EditorPickup *g_pickups = NULL;
 static int g_pickupCount = 0;
 static int g_pickupCapacity = 0;
+
+static EditorDecal *g_decals = NULL;
+static int g_decalCount = 0;
+static int g_decalCapacity = 0;
 
 typedef struct EnemyPreviewTexture
 {
@@ -226,6 +282,58 @@ static float editor_wrapDegrees(float degrees)
   if (wrapped < 0.0f)
     wrapped += 360.0f;
   return wrapped;
+}
+
+static void editor_decalFacingVector(int facingIndex, int *outX, int *outY)
+{
+  if (!outX || !outY)
+    return;
+  if (facingIndex < 0 || facingIndex >= g_decalFacingCount)
+  {
+    *outX = 0;
+    *outY = 0;
+    return;
+  }
+  *outX = g_decalFacingVectors[facingIndex][0];
+  *outY = g_decalFacingVectors[facingIndex][1];
+}
+
+static int editor_decalFacingIndexFromVector(int x, int y)
+{
+  for (int i = 0; i < g_decalFacingCount; ++i)
+  {
+    if (g_decalFacingVectors[i][0] == x && g_decalFacingVectors[i][1] == y)
+      return i;
+  }
+  return 0;
+}
+
+static int editor_equalsIgnoreCase(const char *a, const char *b)
+{
+  while (*a && *b)
+  {
+    if (toupper((unsigned char)*a) != toupper((unsigned char)*b))
+      return 0;
+    ++a;
+    ++b;
+  }
+  return *a == '\0' && *b == '\0';
+}
+
+static int editor_decalFacingIndexFromString(const char *value)
+{
+  if (!value)
+    return -1;
+
+  for (int i = 0; i < g_decalFacingCount; ++i)
+  {
+    if (editor_equalsIgnoreCase(value, g_decalFacingJson[i]))
+      return i;
+    char abbrev[2] = {g_decalFacingJson[i][0], '\0'};
+    if (editor_equalsIgnoreCase(value, abbrev))
+      return i;
+  }
+  return -1;
 }
 
 static void editor_setSpawnPosition(float x, float y)
@@ -315,6 +423,21 @@ static void editor_ensurePickupCapacity(int required)
   g_pickupCapacity = newCap;
 }
 
+static void editor_ensureDecalCapacity(int required)
+{
+  if (required <= g_decalCapacity)
+    return;
+  int newCap = g_decalCapacity ? g_decalCapacity * 2 : 8;
+  while (newCap < required)
+    newCap *= 2;
+  EditorDecal *newData =
+      (EditorDecal *)realloc(g_decals, newCap * sizeof(EditorDecal));
+  if (!newData)
+    return;
+  g_decals = newData;
+  g_decalCapacity = newCap;
+}
+
 static void editor_clearDecorations(void)
 {
   g_decorationCount = 0;
@@ -325,6 +448,13 @@ static void editor_clearPickups(void)
 {
   g_pickupCount = 0;
   g_selectedPickupIndex = -1;
+}
+
+static void editor_clearDecals(void)
+{
+  g_decalCount = 0;
+  g_selectedDecalIndex = -1;
+  g_pendingDoorAssignmentIndex = -1;
 }
 
 static void editor_clearEnemyPreviews(void)
@@ -363,6 +493,17 @@ static EditorPickup *editor_pushPickup(const EditorPickup *source)
     return NULL;
   g_pickups[g_pickupCount] = *source;
   return &g_pickups[g_pickupCount++];
+}
+
+static EditorDecal *editor_pushDecal(const EditorDecal *source)
+{
+  if (!source)
+    return NULL;
+  editor_ensureDecalCapacity(g_decalCount + 1);
+  if (!g_decals)
+    return NULL;
+  g_decals[g_decalCount] = *source;
+  return &g_decals[g_decalCount++];
 }
 
 static double editor_now_seconds(void)
@@ -425,12 +566,101 @@ static bool editor_statusActive(void)
 
 static int editor_totalEntityCount(void)
 {
-  return g_decorationCount + g_pickupCount + g_enemyCount;
+  return g_decorationCount + g_pickupCount + g_enemyCount + g_decalCount;
 }
 
 static bool editor_hasSpriteCapacity(void)
 {
   return editor_totalEntityCount() < NUM_SPRITES;
+}
+
+static int editor_guessDecalFacing(int tileX, int tileY)
+{
+  static const int lookupOrder[4][2] = {
+      {1, 0},
+      {-1, 0},
+      {0, 1},
+      {0, -1},
+  };
+
+  for (int i = 0; i < 4; ++i)
+  {
+    int dirX = lookupOrder[i][0];
+    int dirY = lookupOrder[i][1];
+    int nx = tileX + dirX;
+    int ny = tileY + dirY;
+    if (nx < 0 || ny < 0 || nx >= MAP_WIDTH || ny >= MAP_HEIGHT)
+      continue;
+    if (g_levelTiles[nx][ny] == 0)
+      return editor_decalFacingIndexFromVector(dirX, dirY);
+  }
+  return 0;
+}
+
+static void editor_centerDecal(EditorDecal *decal)
+{
+  if (!decal)
+    return;
+  int tileX = (int)floorf(decal->x);
+  int tileY = (int)floorf(decal->y);
+  if (tileX < 0)
+    tileX = 0;
+  else if (tileX >= MAP_WIDTH)
+    tileX = MAP_WIDTH - 1;
+  if (tileY < 0)
+    tileY = 0;
+  else if (tileY >= MAP_HEIGHT)
+    tileY = MAP_HEIGHT - 1;
+  decal->tileX = tileX;
+  decal->tileY = tileY;
+  decal->x = (float)tileX + 0.5f;
+  decal->y = (float)tileY + 0.5f;
+}
+
+static void editor_applyDecalFacing(EditorDecal *decal, int facingIndex,
+                                    bool alignDoorTarget)
+{
+  if (!decal)
+    return;
+
+  if (facingIndex < 0 || facingIndex >= g_decalFacingCount)
+    facingIndex = 0;
+
+  decal->facingIndex = facingIndex;
+  editor_centerDecal(decal);
+
+  if (alignDoorTarget)
+  {
+    int dirX = 0;
+    int dirY = 0;
+    editor_decalFacingVector(facingIndex, &dirX, &dirY);
+    if (dirX != 0 || dirY != 0)
+    {
+      int targetX = decal->tileX;
+      int targetY = decal->tileY;
+      bool found = false;
+      while (1)
+      {
+        targetX += dirX;
+        targetY += dirY;
+        if (targetX < 0 || targetX >= MAP_WIDTH || targetY < 0 ||
+            targetY >= MAP_HEIGHT)
+          break;
+        if (g_levelTiles[targetX][targetY] != 0)
+        {
+          decal->doorX = targetX;
+          decal->doorY = targetY;
+          found = true;
+          break;
+        }
+      }
+      if (!found)
+      {
+        decal->doorX = decal->tileX;
+        decal->doorY = decal->tileY;
+      }
+    }
+  }
 }
 
 static EditorDecoration *editor_addDecoration(float x, float y, int typeIndex)
@@ -473,6 +703,52 @@ static EditorPickup *editor_addPickup(float x, float y, int typeIndex)
   return result;
 }
 
+static EditorDecal *editor_addDecal(float x, float y, int typeIndex)
+{
+  if (typeIndex < 0 || typeIndex >= g_decalTypeCount)
+    return NULL;
+  if (!editor_hasSpriteCapacity())
+  {
+    editor_setWarningStatus("Sprite limit reached (%d).", NUM_SPRITES);
+    return NULL;
+  }
+  int tileX = (int)floorf(x);
+  int tileY = (int)floorf(y);
+  if (tileX < 0 || tileX >= MAP_WIDTH || tileY < 0 || tileY >= MAP_HEIGHT)
+  {
+    editor_setErrorStatus("Decal coordinates out of bounds.");
+    return NULL;
+  }
+
+  if (g_levelTiles[tileX][tileY] == 0)
+  {
+    editor_setWarningStatus("Decals must be placed on walls.");
+    return NULL;
+  }
+
+  EditorDecal decal;
+  memset(&decal, 0, sizeof(decal));
+  decal.x = (float)tileX + 0.5f;
+  decal.y = (float)tileY + 0.5f;
+  decal.tileX = tileX;
+  decal.tileY = tileY;
+  decal.typeIndex = typeIndex;
+  decal.doorX = tileX;
+  decal.doorY = tileY;
+  decal.activated = 0;
+  int defaultFacing = editor_guessDecalFacing(tileX, tileY);
+  editor_applyDecalFacing(&decal, defaultFacing, false);
+
+  EditorDecal *result = editor_pushDecal(&decal);
+  if (result)
+  {
+    g_entitiesDirty = true;
+    g_pendingDoorAssignmentIndex = (int)(result - g_decals);
+    editor_setStatus("Select door tile for lever.");
+  }
+  return result;
+}
+
 static int editor_findDecorationAtTile(int tileX, int tileY)
 {
   for (int i = 0; i < g_decorationCount; ++i)
@@ -492,6 +768,16 @@ static int editor_findPickupAtTile(int tileX, int tileY)
     int px = (int)floorf(g_pickups[i].x);
     int py = (int)floorf(g_pickups[i].y);
     if (px == tileX && py == tileY)
+      return i;
+  }
+  return -1;
+}
+
+static int editor_findDecalAtTile(int tileX, int tileY)
+{
+  for (int i = 0; i < g_decalCount; ++i)
+  {
+    if (g_decals[i].tileX == tileX && g_decals[i].tileY == tileY)
       return i;
   }
   return -1;
@@ -520,6 +806,23 @@ static void editor_removePickupAtIndex(int index)
   g_pickupCount--;
   if (g_selectedPickupIndex >= g_pickupCount)
     g_selectedPickupIndex = g_pickupCount - 1;
+  g_entitiesDirty = true;
+}
+
+static void editor_removeDecalAtIndex(int index)
+{
+  if (index < 0 || index >= g_decalCount)
+    return;
+  if (g_pendingDoorAssignmentIndex == index)
+    g_pendingDoorAssignmentIndex = -1;
+  else if (g_pendingDoorAssignmentIndex > index)
+    g_pendingDoorAssignmentIndex--;
+  if (index < g_decalCount - 1)
+    memmove(&g_decals[index], &g_decals[index + 1],
+            (size_t)(g_decalCount - index - 1) * sizeof(EditorDecal));
+  g_decalCount--;
+  if (g_selectedDecalIndex >= g_decalCount)
+    g_selectedDecalIndex = g_decalCount - 1;
   g_entitiesDirty = true;
 }
 
@@ -866,6 +1169,7 @@ static int editor_loadEntities(void)
     editor_clearDecorations();
     editor_clearPickups();
     editor_clearEnemies();
+    editor_clearDecals();
     g_entitiesDirty = false;
     return -1;
   }
@@ -873,6 +1177,7 @@ static int editor_loadEntities(void)
   editor_clearDecorations();
   editor_clearPickups();
   editor_clearEnemies();
+  editor_clearDecals();
   g_playerSpawnPos = g_defaultPlayerSpawnPos;
   g_playerSpawnDirDegrees = g_defaultPlayerSpawnDirDegrees;
 
@@ -1015,6 +1320,116 @@ static int editor_loadEntities(void)
     free(pickupsArray);
   }
 
+  char *decalsArray = editor_extractArray(json, "decals");
+  if (decalsArray)
+  {
+    const char *cursor = decalsArray + 1;
+    while (cursor && *cursor)
+    {
+      const char *objStart = strchr(cursor, '{');
+      if (!objStart)
+        break;
+      const char *objEnd = editor_findMatching(objStart, '{', '}');
+      if (!objEnd)
+        break;
+
+      double valueX = 0.0;
+      double valueY = 0.0;
+      double doorX = 0.0;
+      double doorY = 0.0;
+      char typeName[32];
+
+      if (editor_jsonGetDouble(objStart, objEnd, "x", &valueX) != 1 ||
+          editor_jsonGetDouble(objStart, objEnd, "y", &valueY) != 1)
+      {
+        fprintf(stderr, "[EDITOR] Decal entry missing coordinates\n");
+        status = -1;
+        cursor = objEnd + 1;
+        continue;
+      }
+
+      int typeResult =
+          editor_jsonGetString(objStart, objEnd, "type", typeName, sizeof(typeName));
+      int typeIndex = editor_findDecalTypeByJson(typeResult == 1 ? typeName : NULL);
+      if (typeIndex < 0)
+      {
+        fprintf(stderr, "[EDITOR] Unknown decal type '%s'\n",
+                typeResult == 1 ? typeName : "(null)");
+        typeIndex = 0;
+      }
+
+      if (editor_jsonGetDouble(objStart, objEnd, "door_x", &doorX) != 1 ||
+          editor_jsonGetDouble(objStart, objEnd, "door_y", &doorY) != 1)
+      {
+        fprintf(stderr, "[EDITOR] Decal missing door coordinates\n");
+        status = -1;
+        cursor = objEnd + 1;
+        continue;
+      }
+
+      if (!editor_hasSpriteCapacity())
+      {
+        if (!limitWarned)
+        {
+          editor_setWarningStatus("Sprite limit reached (%d); extra entities ignored.",
+                                  NUM_SPRITES);
+          limitWarned = true;
+        }
+        cursor = objEnd + 1;
+        continue;
+      }
+
+      char facingName[16];
+      int facingIndex =
+          editor_jsonGetString(objStart, objEnd, "facing", facingName,
+                               sizeof(facingName)) == 1
+              ? editor_decalFacingIndexFromString(facingName)
+              : -1;
+
+      int tileX = (int)floor(valueX);
+      int tileY = (int)floor(valueY);
+      if (tileX < 0 || tileX >= MAP_WIDTH || tileY < 0 || tileY >= MAP_HEIGHT)
+      {
+        fprintf(stderr, "[EDITOR] Decal coordinates out of bounds\n");
+        cursor = objEnd + 1;
+        continue;
+      }
+
+      int doorTileX = (int)doorX;
+      int doorTileY = (int)doorY;
+      if (doorTileX < 0)
+        doorTileX = 0;
+      else if (doorTileX >= MAP_WIDTH)
+        doorTileX = MAP_WIDTH - 1;
+      if (doorTileY < 0)
+        doorTileY = 0;
+      else if (doorTileY >= MAP_HEIGHT)
+        doorTileY = MAP_HEIGHT - 1;
+
+      EditorDecal decal;
+      memset(&decal, 0, sizeof(decal));
+      decal.x = (float)valueX;
+      decal.y = (float)valueY;
+      decal.typeIndex = typeIndex;
+      decal.doorX = doorTileX;
+      decal.doorY = doorTileY;
+      decal.activated = 0;
+      editor_centerDecal(&decal);
+      if (facingIndex < 0)
+        facingIndex = editor_guessDecalFacing(decal.tileX, decal.tileY);
+      editor_applyDecalFacing(&decal, facingIndex, false);
+      if (g_levelTiles[decal.doorX][decal.doorY] == 0)
+        editor_applyDecalFacing(&decal, decal.facingIndex, true);
+
+      EditorDecal *slot = editor_pushDecal(&decal);
+      if (slot)
+        slot->facingIndex = decal.facingIndex;
+
+      cursor = objEnd + 1;
+    }
+    free(decalsArray);
+  }
+
   char *enemiesArray = editor_extractArray(json, "enemies");
   if (enemiesArray)
   {
@@ -1153,6 +1568,7 @@ static void editor_changeLevel(int index)
   g_selectedDecorationIndex = -1;
   g_selectedPickupIndex = -1;
   g_selectedEnemyIndex = -1;
+  g_selectedDecalIndex = -1;
 
   editor_reloadLevel(true, "Switched to %s.");
 }
@@ -1207,6 +1623,27 @@ static void editor_saveEntities(void)
   }
 
   fprintf(file, "  ],\n");
+  fprintf(file, "  \"decals\": [\n");
+
+  for (int i = 0; i < g_decalCount; ++i)
+  {
+    const EditorDecal *decal = &g_decals[i];
+    const DecalType *type = &g_decalTypes[decal->typeIndex];
+    const char *facingName =
+        (decal->facingIndex >= 0 && decal->facingIndex < g_decalFacingCount)
+            ? g_decalFacingJson[decal->facingIndex]
+            : g_decalFacingJson[0];
+    fprintf(file, "    {\n");
+    fprintf(file, "      \"type\": \"%s\",\n", type->jsonName);
+    fprintf(file, "      \"x\": %.3f,\n", decal->x);
+    fprintf(file, "      \"y\": %.3f,\n", decal->y);
+    fprintf(file, "      \"facing\": \"%s\",\n", facingName);
+    fprintf(file, "      \"door_x\": %d,\n", decal->doorX);
+    fprintf(file, "      \"door_y\": %d\n", decal->doorY);
+    fprintf(file, "    }%s\n", (i + 1 < g_decalCount) ? "," : "");
+  }
+
+  fprintf(file, "  ],\n");
   fprintf(file, "  \"enemies\": [\n");
 
   for (int i = 0; i < g_enemyCount; ++i)
@@ -1232,7 +1669,8 @@ static void editor_saveEntities(void)
 static void editor_loadTileTextures(void)
 {
   const int total =
-      NUM_WALL_TEXTURES + NUM_DECOR_TEXTURES + NUM_ENTITY_TEXTURES;
+      NUM_WALL_TEXTURES + NUM_DECOR_TEXTURES + NUM_ENTITY_TEXTURES +
+      NUM_DECAL_TEXTURES;
   g_tileTextures = (TileTexture *)calloc((size_t)total, sizeof(TileTexture));
   if (!g_tileTextures)
     return;
@@ -1285,6 +1723,23 @@ static void editor_loadTileTextures(void)
     slot->width = w;
     slot->height = h;
     slot->name = entityTextures[i].name;
+    slot->texRef = make_texture_ref(slot->id);
+    slot->mapId = -1;
+    stbi_image_free(pixels);
+  }
+
+  for (int i = 0; i < NUM_DECAL_TEXTURES; ++i)
+  {
+    int w, h, c;
+    unsigned char *pixels =
+        stbi_load(decalTextures[i].path, &w, &h, &c, STBI_rgb_alpha);
+    if (!pixels)
+      continue;
+    TileTexture *slot = &g_tileTextures[g_tileTextureCount++];
+    slot->id = upload_texture_rgba(pixels, w, h);
+    slot->width = w;
+    slot->height = h;
+    slot->name = decalTextures[i].name;
     slot->texRef = make_texture_ref(slot->id);
     slot->mapId = -1;
     stbi_image_free(pixels);
@@ -1742,6 +2197,59 @@ int main(int argc, char **argv)
           igEndChild();
         }
       }
+      else if (g_editorMode == EDIT_MODE_DECALS)
+      {
+        if (igBeginChild_Str("##palette_scroll", (ImVec2){0.0f, 0.0f}, false,
+                             ImGuiWindowFlags_HorizontalScrollbar))
+        {
+          ImVec2 tableSize = {0.0f, 0.0f};
+          int tableColumns = columns;
+          if (g_decalTypeCount > 0 && tableColumns > g_decalTypeCount)
+            tableColumns = g_decalTypeCount;
+          if (tableColumns < 1)
+            tableColumns = 1;
+          if (g_decalTypeCount > 0 &&
+              igBeginTable("PaletteGrid##decals", tableColumns,
+                           ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_PadOuterX |
+                               ImGuiTableFlags_ScrollX,
+                           tableSize, 0.0f))
+          {
+            int gridIndex = 0;
+            for (int i = 0; i < g_decalTypeCount; ++i)
+            {
+              igPushID_Int(i);
+              const DecalType *type = &g_decalTypes[i];
+              TileTexture *slot = editor_findTileByName(type->textureOffName);
+              if (slot)
+              {
+                if ((gridIndex % tableColumns) == 0)
+                  igTableNextRow(0.0f, buttonSize + spacing * 2.0f);
+                igTableSetColumnIndex(gridIndex % tableColumns);
+
+                igBeginGroup();
+                igText("%s", type->label);
+                ImVec4 bg = {0.0f, 0.0f, 0.0f, 0.0f};
+                if (i == g_selectedDecalType)
+                  bg = (ImVec4){0.2f, 0.5f, 0.2f, 0.6f};
+                ImVec2 imageSize = {buttonSize, buttonSize};
+                char btnId[64];
+                snprintf(btnId, sizeof(btnId), "decalbtn_%d", i);
+                if (igImageButton(btnId, slot->texRef, imageSize,
+                                  (ImVec2){0.0f, 0.0f}, (ImVec2){1.0f, 1.0f}, bg,
+                                  (ImVec4){1, 1, 1, 1}))
+                {
+                  g_selectedDecalType = i;
+                }
+                igEndGroup();
+                gridIndex++;
+              }
+              igPopID();
+            }
+            igEndTable();
+          }
+          igEndChild();
+        }
+      }
       else if (g_editorMode == EDIT_MODE_SPAWN)
       {
         igTextWrapped("Spawn mode:\n  Left click to move the spawn point\n  Right click to rotate the facing direction");
@@ -1818,6 +2326,8 @@ int main(int argc, char **argv)
       igRadioButton_IntPtr("Pickups", (int *)&g_editorMode, EDIT_MODE_PICKUPS);
       igSameLine(0.0f, 8.0f);
       igRadioButton_IntPtr("Enemies", (int *)&g_editorMode, EDIT_MODE_ENEMIES);
+      igSameLine(0.0f, 8.0f);
+      igRadioButton_IntPtr("Decals", (int *)&g_editorMode, EDIT_MODE_DECALS);
       igSameLine(0.0f, 8.0f);
       igRadioButton_IntPtr("Spawn", (int *)&g_editorMode, EDIT_MODE_SPAWN);
 
@@ -2086,6 +2596,124 @@ int main(int argc, char **argv)
           igPopID();
         }
       }
+      else if (g_editorMode == EDIT_MODE_DECALS)
+      {
+        const DecalType *type = &g_decalTypes[g_selectedDecalType];
+        igText("Active decal: %s", type->label);
+        if (igCollapsingHeader_TreeNodeFlags("Decals##section", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+          igPushID_Str("decal_section");
+          igText("Placed: %d", g_decalCount);
+          if (g_decalCount == 0)
+            igText("Click the grid to place a decal.");
+          for (int i = 0; i < g_decalCount; ++i)
+          {
+            igPushID_Int(i);
+            const DecalType *rowType = &g_decalTypes[g_decals[i].typeIndex];
+            const char *facingText =
+                (g_decals[i].facingIndex >= 0 &&
+                 g_decals[i].facingIndex < g_decalFacingCount)
+                    ? g_decalFacingLabels[g_decals[i].facingIndex]
+                    : "?";
+            char label[128];
+            snprintf(label, sizeof(label), "%s [%s] (door %d,%d)##decal_%d",
+                     rowType->label, facingText, g_decals[i].doorX,
+                     g_decals[i].doorY, i);
+            bool selected = (i == g_selectedDecalIndex);
+            if (igSelectable_Bool(label, selected, 0, (ImVec2){0.0f, 0.0f}))
+              g_selectedDecalIndex = i;
+            igPopID();
+          }
+
+          if (g_selectedDecalIndex >= 0 && g_selectedDecalIndex < g_decalCount)
+          {
+            EditorDecal *decal = &g_decals[g_selectedDecalIndex];
+            const DecalType *selectedType = &g_decalTypes[decal->typeIndex];
+            igSeparator();
+            igText("Selected decal");
+            igText("Position: (%.2f, %.2f)", decal->x, decal->y);
+            if (igBeginCombo("Type##decal", selectedType->label, 0))
+            {
+              for (int i = 0; i < g_decalTypeCount; ++i)
+              {
+                bool selected = (decal->typeIndex == i);
+                if (igSelectable_Bool(g_decalTypes[i].label, selected, 0,
+                                      (ImVec2){0.0f, 0.0f}))
+                {
+                  decal->typeIndex = i;
+                  g_entitiesDirty = true;
+                }
+                if (selected)
+                  igSetItemDefaultFocus();
+              }
+              igEndCombo();
+            }
+
+            const char *facingLabel =
+                (decal->facingIndex >= 0 && decal->facingIndex < g_decalFacingCount)
+                    ? g_decalFacingLabels[decal->facingIndex]
+                    : "Unknown";
+            if (igBeginCombo("Facing##decal", facingLabel, 0))
+            {
+              for (int i = 0; i < g_decalFacingCount; ++i)
+              {
+                bool selected = (decal->facingIndex == i);
+                if (igSelectable_Bool(g_decalFacingLabels[i], selected, 0,
+                                      (ImVec2){0.0f, 0.0f}))
+                {
+                  editor_applyDecalFacing(decal, i, true);
+                  g_entitiesDirty = true;
+                }
+                if (selected)
+                  igSetItemDefaultFocus();
+              }
+              igEndCombo();
+            }
+
+            int doorCoords[2] = {decal->doorX, decal->doorY};
+            if (igInputInt2("Door Tile##decal", doorCoords, ImGuiInputTextFlags_None))
+            {
+              if (doorCoords[0] < 0)
+                doorCoords[0] = 0;
+              else if (doorCoords[0] >= MAP_WIDTH)
+                doorCoords[0] = MAP_WIDTH - 1;
+              if (doorCoords[1] < 0)
+                doorCoords[1] = 0;
+              else if (doorCoords[1] >= MAP_HEIGHT)
+                doorCoords[1] = MAP_HEIGHT - 1;
+              decal->doorX = doorCoords[0];
+              decal->doorY = doorCoords[1];
+              g_entitiesDirty = true;
+            }
+
+            if (igButton("Door In Front", (ImVec2){0, 0}))
+            {
+              editor_applyDecalFacing(decal, decal->facingIndex, true);
+              g_entitiesDirty = true;
+            }
+
+            if (igButton("Assign Door From Map", (ImVec2){0, 0}))
+            {
+              g_pendingDoorAssignmentIndex = g_selectedDecalIndex;
+              editor_setStatus("Click a wall tile to assign lever target.");
+            }
+
+            if (g_pendingDoorAssignmentIndex == g_selectedDecalIndex)
+            {
+              igSameLine(0.0f, 8.0f);
+              igTextColored((ImVec4){0.8f, 0.7f, 0.2f, 1.0f},
+                            "Awaiting door selection...");
+            }
+
+            if (igButton("Delete Decal", (ImVec2){0, 0}))
+            {
+              editor_removeDecalAtIndex(g_selectedDecalIndex);
+              g_selectedDecalIndex = -1;
+            }
+          }
+          igPopID();
+        }
+      }
 
       igSeparator();
 
@@ -2144,6 +2772,23 @@ int main(int argc, char **argv)
         ImDrawList_AddQuadFilled(drawList, pTop, pRight, pBottom, pLeft, fill);
         ImDrawList_AddQuad(drawList, pTop, pRight, pBottom, pLeft,
                            EDITOR_COL32(40, 25, 5, 255), 1.5f);
+      }
+
+      for (int i = 0; i < g_decalCount; ++i)
+      {
+        const EditorDecal *decal = &g_decals[i];
+        ImVec2 center = {origin.x + decal->x * tileSize,
+                         origin.y + decal->y * tileSize};
+        float half = tileSize * 0.20f;
+        ImVec2 p0 = {center.x - half, center.y - half};
+        ImVec2 p2 = {center.x + half, center.y + half};
+        ImU32 fill =
+            (i == g_selectedDecalIndex)
+                ? EDITOR_COL32(120, 180, 250, 255)
+                : EDITOR_COL32(90, 140, 220, 220);
+        ImDrawList_AddRectFilled(drawList, p0, p2, fill, 4.0f, 0);
+        ImDrawList_AddRect(drawList, p0, p2, EDITOR_COL32(20, 50, 120, 255),
+                           4.0f, 0, 1.5f);
       }
 
       for (int i = 0; i < g_enemyCount; ++i)
@@ -2273,61 +2918,140 @@ int main(int argc, char **argv)
               if (g_selectedPickupIndex == existing)
                 g_selectedPickupIndex = -1;
             }
-      }
-      break;
-      case EDIT_MODE_ENEMIES:
-      {
-        int existing = editor_enemyIndexAtTile(tileX, tileY);
-        if (io->MouseClicked[0])
-        {
-          if (existing >= 0)
-          {
-            g_selectedEnemyIndex = existing;
           }
-          else
+          break;
+          case EDIT_MODE_ENEMIES:
           {
-            const EnemyType *type = &g_enemyTypes[g_selectedEnemyType];
-            EditorEnemy *created =
-                editor_addEnemy((float)tileX + 0.5f,
-                                (float)tileY + 0.5f, type);
-            if (created)
-              g_selectedEnemyIndex = g_enemyCount - 1;
+            int existing = editor_enemyIndexAtTile(tileX, tileY);
+            if (io->MouseClicked[0])
+            {
+              if (existing >= 0)
+              {
+                g_selectedEnemyIndex = existing;
+              }
+              else
+              {
+                const EnemyType *type = &g_enemyTypes[g_selectedEnemyType];
+                EditorEnemy *created =
+                    editor_addEnemy((float)tileX + 0.5f,
+                                    (float)tileY + 0.5f, type);
+                if (created)
+                  g_selectedEnemyIndex = g_enemyCount - 1;
+              }
+            }
+            if (io->MouseClicked[1] && existing >= 0)
+            {
+              editor_removeEnemyAtIndex(existing);
+              if (g_selectedEnemyIndex == existing)
+                g_selectedEnemyIndex = -1;
+            }
+          }
+          break;
+          case EDIT_MODE_DECALS:
+          {
+            if (g_pendingDoorAssignmentIndex >= 0)
+            {
+              if (g_levelTiles[tileX][tileY] > 0)
+              {
+                ImVec2 doorP0 = {origin.x + tileX * tileSize,
+                                  origin.y + tileY * tileSize};
+                ImVec2 doorP1 = {doorP0.x + tileSize, doorP0.y + tileSize};
+                ImDrawList_AddRect(drawList, doorP0, doorP1,
+                                   EDITOR_COL32(255, 200, 80, 255), 0.0f, 0,
+                                   3.0f);
+                ImDrawList_AddRectFilled(drawList, doorP0, doorP1,
+                                         EDITOR_COL32(255, 200, 80, 60), 0.0f,
+                                         0);
+              }
+              else
+              {
+                ImVec2 invalidP0 = {origin.x + tileX * tileSize,
+                                     origin.y + tileY * tileSize};
+                ImVec2 invalidP1 = {invalidP0.x + tileSize,
+                                    invalidP0.y + tileSize};
+                ImDrawList_AddRect(drawList, invalidP0, invalidP1,
+                                   EDITOR_COL32(200, 60, 60, 255), 0.0f, 0,
+                                   3.0f);
+              }
+
+              if (io->MouseClicked[0])
+              {
+                if (g_levelTiles[tileX][tileY] > 0)
+                {
+                  EditorDecal *target =
+                      &g_decals[g_pendingDoorAssignmentIndex];
+                  target->doorX = tileX;
+                  target->doorY = tileY;
+                  g_entitiesDirty = true;
+                  editor_setStatus("Lever target set to (%d,%d).", tileX,
+                                   tileY);
+                  g_pendingDoorAssignmentIndex = -1;
+                }
+                else
+                {
+                  editor_setErrorStatus(
+                      "Selected tile is not a wall; choose a solid tile.");
+                }
+              }
+              else if (io->MouseClicked[1])
+              {
+                g_pendingDoorAssignmentIndex = -1;
+                editor_setStatus("Door assignment cancelled.");
+              }
+            }
+            else
+            {
+              int existing = editor_findDecalAtTile(tileX, tileY);
+              if (io->MouseClicked[0])
+              {
+                if (existing >= 0)
+                {
+                  g_selectedDecalIndex = existing;
+                }
+                else
+                {
+                  EditorDecal *created =
+                      editor_addDecal((float)tileX + 0.5f,
+                                      (float)tileY + 0.5f, g_selectedDecalType);
+                  if (created)
+                    g_selectedDecalIndex = g_decalCount - 1;
+                }
+              }
+              if (io->MouseClicked[1] && existing >= 0)
+              {
+                editor_removeDecalAtIndex(existing);
+                if (g_selectedDecalIndex == existing)
+                  g_selectedDecalIndex = -1;
+              }
+            }
+          }
+          break;
+          case EDIT_MODE_SPAWN:
+          {
+            if (io->MouseClicked[0])
+            {
+              float newX = (float)tileX + 0.5f;
+              float newY = (float)tileY + 0.5f;
+              editor_setSpawnPosition(newX, newY);
+            }
+            if (io->MouseDown[1])
+            {
+              float pointerX = (io->MousePos.x - origin.x) / tileSize;
+              float pointerY = (io->MousePos.y - origin.y) / tileSize;
+              float deltaX = pointerX - g_playerSpawnPos.x;
+              float deltaY = g_playerSpawnPos.y - pointerY;
+              if (fabsf(deltaX) > 0.001f || fabsf(deltaY) > 0.001f)
+              {
+                float angleDeg =
+                    (float)(atan2f(deltaY, deltaX) * (180.0f / (float)M_PI));
+                editor_setSpawnDirection(angleDeg);
+              }
+            }
+          }
+          break;
           }
         }
-        if (io->MouseClicked[1] && existing >= 0)
-        {
-          editor_removeEnemyAtIndex(existing);
-          if (g_selectedEnemyIndex == existing)
-            g_selectedEnemyIndex = -1;
-        }
       }
-      break;
-      case EDIT_MODE_SPAWN:
-      {
-        if (io->MouseClicked[0])
-        {
-          float newX = (float)tileX + 0.5f;
-          float newY = (float)tileY + 0.5f;
-          editor_setSpawnPosition(newX, newY);
-        }
-        if (io->MouseDown[1])
-        {
-          float pointerX = (io->MousePos.x - origin.x) / tileSize;
-          float pointerY = (io->MousePos.y - origin.y) / tileSize;
-          float deltaX = pointerX - g_playerSpawnPos.x;
-          float deltaY = g_playerSpawnPos.y - pointerY;
-          if (fabsf(deltaX) > 0.001f || fabsf(deltaY) > 0.001f)
-          {
-            float angleDeg =
-                (float)(atan2f(deltaY, deltaX) * (180.0f / (float)M_PI));
-            editor_setSpawnDirection(angleDeg);
-          }
-        }
-      }
-      break;
-      }
-    }
-  }
 
       igDummy((ImVec2){canvasSize.x, canvasSize.y});
 

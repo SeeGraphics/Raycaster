@@ -12,8 +12,10 @@
 #define NUM_WALL_TEXTURES 13
 #define NUM_DECOR_TEXTURES 3
 #define NUM_ENTITY_TEXTURES 1
+#define NUM_DECAL_TEXTURES 2
 #define NUM_TEXTURES                                                           \
-  (NUM_WALL_TEXTURES + NUM_DECOR_TEXTURES + NUM_ENTITY_TEXTURES)
+  (NUM_WALL_TEXTURES + NUM_DECOR_TEXTURES + NUM_ENTITY_TEXTURES +              \
+   NUM_DECAL_TEXTURES)
 
 typedef struct {
   u32 *textures[NUM_TEXTURES];
@@ -48,6 +50,10 @@ static const TextureInfo decorTextures[NUM_DECOR_TEXTURES] = {
 
 static const TextureInfo entityTextures[NUM_ENTITY_TEXTURES] = {
     {"assets/textures/entities/money.png", "Money"}};
+
+static const TextureInfo decalTextures[NUM_DECAL_TEXTURES] = {
+    {"assets/textures/decals/lever/off.png", "LeverOff"},
+    {"assets/textures/decals/lever/on.png", "LeverOn"}};
 
 // init
 TextureManager createTextures();

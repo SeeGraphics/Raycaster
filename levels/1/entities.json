@@ -2,9 +2,9 @@
   "settings": {
     "floor_texture": 6,
     "ceiling_texture": 3,
-    "player_spawn_x": 11.500,
-    "player_spawn_y": 15.500,
-    "player_spawn_dir": 270.400
+    "player_spawn_x": 2.500,
+    "player_spawn_y": 21.500,
+    "player_spawn_dir": 0.000
   },
   "decorations": [
     {
@@ -226,6 +226,16 @@
     }
   ],
   "pickups": [
+  ],
+  "decals": [
+    {
+      "type": "LEVER",
+      "x": 10.500,
+      "y": 22.500,
+      "facing": "WEST",
+      "door_x": 10,
+      "door_y": 21
+    }
   ],
   "enemies": [
     {

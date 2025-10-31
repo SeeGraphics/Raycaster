@@ -2,6 +2,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <stdio.h>
+#include <string.h>
 
 // create Object for Engine
 TextureManager createTextures() {
@@ -41,14 +42,19 @@ void loadImage(u32 *texture, int width, int height, const char *filename) {
     return;
   }
 
-  // Copy pixel data to texture buffer
-  u32 *pixels = (u32 *)converted->pixels;
-  int minW = (width < converted->w) ? width : converted->w;
-  int minH = (height < converted->h) ? height : converted->h;
+  memset(texture, 0, (size_t)width * (size_t)height * sizeof(u32));
 
-  for (int y = 0; y < minH; y++) {
-    for (int x = 0; x < minW; x++) {
-      texture[y * width + x] = pixels[y * (converted->pitch / 4) + x];
+  u32 *pixels = (u32 *)converted->pixels;
+  int srcPitch = converted->pitch / 4;
+  for (int y = 0; y < height; ++y) {
+    int srcY = (converted->h > 0) ? (y * converted->h) / height : 0;
+    if (srcY >= converted->h)
+      srcY = converted->h - 1;
+    for (int x = 0; x < width; ++x) {
+      int srcX = (converted->w > 0) ? (x * converted->w) / width : 0;
+      if (srcX >= converted->w)
+        srcX = converted->w - 1;
+      texture[y * width + x] = pixels[srcY * srcPitch + srcX];
     }
   }
 

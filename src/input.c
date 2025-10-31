@@ -66,6 +66,10 @@ int handleInput(Engine *engine, double deltaTime) {
         return 1;
       }
 
+      if (event.key.keysym.scancode == SDL_SCANCODE_E) {
+        entities_tryInteract(engine);
+      }
+
       // ungrab Mouse
       if (event.key.keysym.scancode == UNGRAB_MOUSE && mouseUngrabbed == 0) {
         SDL_SetRelativeMouseMode(SDL_FALSE);
@@ -124,7 +128,7 @@ int handleInput(Engine *engine, double deltaTime) {
         engine->player.pitch = -CLAMP;
     }
 
-    if (event.type == SDL_MOUSEBUTTONDOWN) {
+  if (event.type == SDL_MOUSEBUTTONDOWN) {
       if (event.button.button == MSB_LEFT) {
         engine->player.mouseHeld = 1;
         weaponProperties[engine->player.selectedGun].fireAccumulator = 0;

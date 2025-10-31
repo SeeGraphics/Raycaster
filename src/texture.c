@@ -75,6 +75,12 @@ void loadArrays(TextureManager *tm, int texWidth, int texHeight) {
   for (int i = 0; i < NUM_ENTITY_TEXTURES; i++)
     loadImage(tm->textures[index + i], texWidth, texHeight,
               entityTextures[i].path);
+  index += NUM_ENTITY_TEXTURES;
+
+  // Load decal textures
+  for (int i = 0; i < NUM_DECAL_TEXTURES; ++i)
+    loadImage(tm->textures[index + i], texWidth, texHeight,
+              decalTextures[i].path);
 
   // Load animations?
 
@@ -96,6 +102,11 @@ int getTextureIndexByName(const char *name) {
   for (int i = 0; i < NUM_ENTITY_TEXTURES; i++)
     if (strcmp(entityTextures[i].name, name) == 0)
       return NUM_WALL_TEXTURES + NUM_DECOR_TEXTURES + i;
+
+  // Check decals
+  for (int i = 0; i < NUM_DECAL_TEXTURES; ++i)
+    if (strcmp(decalTextures[i].name, name) == 0)
+      return NUM_WALL_TEXTURES + NUM_DECOR_TEXTURES + NUM_ENTITY_TEXTURES + i;
 
   return -1; // not found
 }

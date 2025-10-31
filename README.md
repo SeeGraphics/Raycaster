@@ -58,7 +58,7 @@ Here’s a quick visual overview of the project so far:
 
 ![Enemies](images/Enemies.png) ![Editor](images/Editor.png)
 
-![Debug](images/Debug.png) ![Pitch](images/Pitch.png)
+![Debug](images/Debug.png) ![Pitch](images/Pitchview.png)
 
 ---
 

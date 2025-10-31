@@ -41,7 +41,7 @@ typedef struct
   };
 } SpriteAppearance;
 
-typedef struct
+typedef struct Sprite
 {
   f64 x;
   f64 y;

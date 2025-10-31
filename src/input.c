@@ -3,6 +3,7 @@
 #include "player.h"
 #include "enemies.h"
 #include "weapons.h"
+#include "entities.h"
 
 int mouseUngrabbed = 0;
 
@@ -224,16 +225,18 @@ int handleInput(Engine *engine, double deltaTime) {
 
   /* CONTINUOUS INPUT (held keys) */
   const Uint8 *state = SDL_GetKeyboardState(NULL);
+  Sprite *sprites = engine->sprites;
+  int spriteCount = entities_getSpriteCount();
 
   // Movement
   if (state[SDL_SCANCODE_W] || state[SDL_SCANCODE_UP])
-    player_move(&engine->player, deltaTime, worldMap, 1);
+    player_move(&engine->player, deltaTime, worldMap, sprites, spriteCount, 1);
   if (state[SDL_SCANCODE_S] || state[SDL_SCANCODE_DOWN])
-    player_move(&engine->player, deltaTime, worldMap, -1);
+    player_move(&engine->player, deltaTime, worldMap, sprites, spriteCount, -1);
   if (state[SDL_SCANCODE_A])
-    player_strafe(&engine->player, deltaTime, worldMap, -1);
+    player_strafe(&engine->player, deltaTime, worldMap, sprites, spriteCount, -1);
   if (state[SDL_SCANCODE_D])
-    player_strafe(&engine->player, deltaTime, worldMap, 1);
+    player_strafe(&engine->player, deltaTime, worldMap, sprites, spriteCount, 1);
 
   // Rotation with keys
   if (state[SDL_SCANCODE_LEFT])

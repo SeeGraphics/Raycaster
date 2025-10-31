@@ -5,6 +5,8 @@
 #include "map.h"
 #include <stdbool.h>
 
+typedef struct Sprite Sprite;
+
 #define CLAMP 160
 #define POS_X 22.0
 #define POS_Y 11.5
@@ -49,9 +51,11 @@ Player createPlayer();
 
 // movement
 void player_move(Player *player, double deltaTime,
-                 int worldMap[MAP_HEIGHT][MAP_WIDTH], int direction);
+                 int worldMap[MAP_HEIGHT][MAP_WIDTH], Sprite *sprites,
+                 int spriteCount, int direction);
 void player_strafe(Player *player, double deltaTime,
-                   int worldMap[MAP_HEIGHT][MAP_WIDTH], int direction);
+                   int worldMap[MAP_HEIGHT][MAP_WIDTH], Sprite *sprites,
+                   int spriteCount, int direction);
 
 void player_rotate(Player *player, double rotationAmount);
 double mouse_rotationAmount(double sensX, Sint16 xrel);

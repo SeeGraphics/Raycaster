@@ -2,8 +2,8 @@
   "settings": {
     "floor_texture": 6,
     "ceiling_texture": 3,
-    "player_spawn_x": 6.500,
-    "player_spawn_y": 2.500,
+    "player_spawn_x": 11.500,
+    "player_spawn_y": 15.500,
     "player_spawn_dir": 270.400
   },
   "decorations": [
@@ -257,6 +257,30 @@
       "animation": "DEMON_WALK",
       "x": 7.500,
       "y": 5.500,
+      "scale": 1.350,
+      "health": 200
+    },
+    {
+      "type": "enemy",
+      "animation": "DEMON_WALK",
+      "x": 15.500,
+      "y": 16.500,
+      "scale": 1.350,
+      "health": 200
+    },
+    {
+      "type": "enemy",
+      "animation": "DEMON_WALK",
+      "x": 14.500,
+      "y": 18.500,
+      "scale": 1.350,
+      "health": 200
+    },
+    {
+      "type": "enemy",
+      "animation": "DEMON_WALK",
+      "x": 12.500,
+      "y": 18.500,
       "scale": 1.350,
       "health": 200
     }

@@ -304,6 +304,34 @@ static int editor_clampi(int value, int minValue, int maxValue)
   return value;
 }
 
+static float editor_tileLeftX(int tileX, float tileSize, float originX)
+{
+  return originX + (float)(MAP_WIDTH - 1 - tileX) * tileSize;
+}
+
+static float editor_worldToScreenX(float worldX, float tileSize, float originX)
+{
+  return originX + ((float)MAP_WIDTH - worldX) * tileSize;
+}
+
+static float editor_screenToWorldX(float screenX, float tileSize, float originX)
+{
+  float gridX = (screenX - originX) / tileSize;
+  if (gridX < 0.0f)
+    gridX = 0.0f;
+  if (gridX > (float)MAP_WIDTH)
+    gridX = (float)MAP_WIDTH;
+  return (float)MAP_WIDTH - gridX;
+}
+
+static int editor_screenToTileX(float screenX, float tileSize, float originX)
+{
+  float gridX = (screenX - originX) / tileSize;
+  if (gridX < 0.0f || gridX >= (float)MAP_WIDTH)
+    return -1;
+  return MAP_WIDTH - 1 - (int)gridX;
+}
+
 static float editor_wrapDegrees(float degrees)
 {
   float wrapped = fmodf(degrees, 360.0f);
@@ -3140,8 +3168,9 @@ int main(int argc, char **argv)
         for (int x = 0; x < MAP_WIDTH; ++x)
         {
           int tile = g_levelTiles[x][y];
-          ImVec2 p0 = {origin.x + x * tileSize, origin.y + y * tileSize};
-          ImVec2 p1 = {p0.x + tileSize, p0.y + tileSize};
+          float leftX = editor_tileLeftX(x, tileSize, origin.x);
+          ImVec2 p0 = {leftX, origin.y + y * tileSize};
+          ImVec2 p1 = {leftX + tileSize, p0.y + tileSize};
           ImU32 fillColor = (tile > 0) ? EDITOR_COL32(180, 180, 120, 255)
                                        : EDITOR_COL32(45, 45, 45, 255);
           ImDrawList_AddRectFilled(drawList, p0, p1, fillColor, 0.0f, 0);
@@ -3153,7 +3182,7 @@ int main(int argc, char **argv)
       for (int i = 0; i < g_decorationCount; ++i)
       {
         const EditorDecoration *decor = &g_decorations[i];
-        ImVec2 center = {origin.x + decor->x * tileSize,
+        ImVec2 center = {editor_worldToScreenX(decor->x, tileSize, origin.x),
                          origin.y + decor->y * tileSize};
         float half = tileSize * 0.25f;
         ImVec2 p0 = {center.x - half, center.y - half};
@@ -3170,7 +3199,7 @@ int main(int argc, char **argv)
       for (int i = 0; i < g_pickupCount; ++i)
       {
         const EditorPickup *pickup = &g_pickups[i];
-        ImVec2 center = {origin.x + pickup->x * tileSize,
+        ImVec2 center = {editor_worldToScreenX(pickup->x, tileSize, origin.x),
                          origin.y + pickup->y * tileSize};
         float half = tileSize * 0.24f;
         ImVec2 pTop = {center.x, center.y - half};
@@ -3189,7 +3218,7 @@ int main(int argc, char **argv)
       for (int i = 0; i < g_decalCount; ++i)
       {
         const EditorDecal *decal = &g_decals[i];
-        ImVec2 center = {origin.x + decal->x * tileSize,
+        ImVec2 center = {editor_worldToScreenX(decal->x, tileSize, origin.x),
                          origin.y + decal->y * tileSize};
         float half = tileSize * 0.20f;
         ImVec2 p0 = {center.x - half, center.y - half};
@@ -3206,7 +3235,7 @@ int main(int argc, char **argv)
       for (int i = 0; i < g_wallTextCount; ++i)
       {
         const EditorWallText *text = &g_wallTexts[i];
-        ImVec2 center = {origin.x + text->x * tileSize,
+        ImVec2 center = {editor_worldToScreenX(text->x, tileSize, origin.x),
                          origin.y + text->y * tileSize};
         float half = tileSize * 0.18f;
         ImVec2 p0 = {center.x - half, center.y - half};
@@ -3217,7 +3246,7 @@ int main(int argc, char **argv)
         ImDrawList_AddRectFilled(drawList, p0, p1, fill, 3.0f, 0);
         ImDrawList_AddRect(drawList, p0, p1, EDITOR_COL32(60, 60, 20, 255),
                            3.0f, 0, 1.2f);
-        ImVec2 facingDir = {g_decalFacingVectors[text->facingIndex][0] * half,
+        ImVec2 facingDir = {-g_decalFacingVectors[text->facingIndex][0] * half,
                             g_decalFacingVectors[text->facingIndex][1] * half};
         ImVec2 arrowEnd = {center.x + facingDir.x, center.y + facingDir.y};
         ImDrawList_AddLine(drawList, center, arrowEnd,
@@ -3227,7 +3256,7 @@ int main(int argc, char **argv)
       for (int i = 0; i < g_enemyCount; ++i)
       {
         const EditorEnemy *enemy = &g_enemies[i];
-        ImVec2 center = {origin.x + enemy->x * tileSize,
+        ImVec2 center = {editor_worldToScreenX(enemy->x, tileSize, origin.x),
                          origin.y + enemy->y * tileSize};
         float radius = tileSize * 0.3f;
         ImU32 fill =
@@ -3239,7 +3268,7 @@ int main(int argc, char **argv)
                              EDITOR_COL32(20, 20, 20, 255), 16, 2.0f);
       }
 
-      ImVec2 spawnCenter = {origin.x + g_playerSpawnPos.x * tileSize,
+      ImVec2 spawnCenter = {editor_worldToScreenX(g_playerSpawnPos.x, tileSize, origin.x),
                             origin.y + g_playerSpawnPos.y * tileSize};
       float spawnRadius = tileSize * 0.32f;
       ImU32 spawnFill =
@@ -3251,7 +3280,9 @@ int main(int argc, char **argv)
       ImDrawList_AddCircle(drawList, spawnCenter, spawnRadius, spawnOutline, 24, 2.0f);
       float dirRad =
           (float)(g_playerSpawnDirDegrees * (float)M_PI / 180.0f);
-      ImVec2 dirVec = {cosf(dirRad), -sinf(dirRad)};
+      float worldDirX = cosf(dirRad);
+      float worldDirY = -sinf(dirRad);
+      ImVec2 dirVec = {-worldDirX, worldDirY};
       ImVec2 arrowHead = {spawnCenter.x + dirVec.x * spawnRadius,
                           spawnCenter.y + dirVec.y * spawnRadius};
       ImVec2 arrowTail = {spawnCenter.x - dirVec.x * (spawnRadius * 0.4f),
@@ -3266,12 +3297,12 @@ int main(int argc, char **argv)
 
       if (hovered)
       {
-        int tileX = (int)((io->MousePos.x - origin.x) / tileSize);
+        int tileX = editor_screenToTileX(io->MousePos.x, tileSize, origin.x);
         int tileY = (int)((io->MousePos.y - origin.y) / tileSize);
-        if (tileX >= 0 && tileX < MAP_WIDTH && tileY >= 0 && tileY < MAP_HEIGHT)
+        if (tileX >= 0 && tileY >= 0 && tileY < MAP_HEIGHT)
         {
-          ImVec2 highlight0 = {origin.x + tileX * tileSize,
-                               origin.y + tileY * tileSize};
+          float highlightLeft = editor_tileLeftX(tileX, tileSize, origin.x);
+          ImVec2 highlight0 = {highlightLeft, origin.y + tileY * tileSize};
           ImVec2 highlight1 = {highlight0.x + tileSize,
                                highlight0.y + tileSize};
           ImDrawList_AddRect(drawList, highlight0, highlight1,
@@ -3386,8 +3417,8 @@ int main(int argc, char **argv)
         {
               if (g_levelTiles[tileX][tileY] > 0)
               {
-                ImVec2 doorP0 = {origin.x + tileX * tileSize,
-                                  origin.y + tileY * tileSize};
+                float doorLeft = editor_tileLeftX(tileX, tileSize, origin.x);
+                ImVec2 doorP0 = {doorLeft, origin.y + tileY * tileSize};
                 ImVec2 doorP1 = {doorP0.x + tileSize, doorP0.y + tileSize};
                 ImDrawList_AddRect(drawList, doorP0, doorP1,
                                    EDITOR_COL32(255, 200, 80, 255), 0.0f, 0,
@@ -3398,8 +3429,8 @@ int main(int argc, char **argv)
               }
               else
               {
-                ImVec2 invalidP0 = {origin.x + tileX * tileSize,
-                                     origin.y + tileY * tileSize};
+                float invalidLeft = editor_tileLeftX(tileX, tileSize, origin.x);
+                ImVec2 invalidP0 = {invalidLeft, origin.y + tileY * tileSize};
                 ImVec2 invalidP1 = {invalidP0.x + tileSize,
                                     invalidP0.y + tileSize};
                 ImDrawList_AddRect(drawList, invalidP0, invalidP1,
@@ -3495,7 +3526,8 @@ int main(int argc, char **argv)
             }
             if (io->MouseDown[1])
             {
-              float pointerX = (io->MousePos.x - origin.x) / tileSize;
+              float pointerX =
+                  editor_screenToWorldX(io->MousePos.x, tileSize, origin.x);
               float pointerY = (io->MousePos.y - origin.y) / tileSize;
               float deltaX = pointerX - g_playerSpawnPos.x;
               float deltaY = g_playerSpawnPos.y - pointerY;

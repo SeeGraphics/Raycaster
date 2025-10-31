@@ -2,12 +2,10 @@
 
 **Wolfenstein3D-style software Renderer using Raycasting, written in C with SDL2.**
 
----
 
 This is my **first attempt** at a software renderer.
 It’s a **heavy work in progress** with plenty of features to come.
 
----
 
 ## Build Instructions
 

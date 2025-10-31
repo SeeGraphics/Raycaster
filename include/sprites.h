@@ -4,7 +4,7 @@
 #include "animation.h"
 #include "types.h"
 
-#define NUM_SPRITES 28
+#define NUM_SPRITES 256
 
 // Texture index macros (kept for legacy sprite setup convenience)
 #define TEX_PILLAR 13

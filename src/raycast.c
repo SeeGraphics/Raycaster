@@ -2,13 +2,8 @@
 #include "engine.h"
 #include "map.h"
 
-static inline f32 clamp(f32 value, f32 min, f32 max) {
-  if (value < min)
-    value = min;
-  if (value > max)
-    value = max;
-  return value;
-}
+int g_floorTextureId = 3;
+int g_ceilingTextureId = 6;
 
 void perform_raycasting(Engine *engine) {
   for (int x = 0; x < RENDER_WIDTH; x++) {
@@ -161,8 +156,8 @@ void perform_floorcasting(Engine *engine) {
       floorY += floorStepY;
 
       // Choose texture and draw the pixel
-      int floorTexture = 3;
-      int ceilingTexture = 6;
+      int floorTexture = g_floorTextureId;
+      int ceilingTexture = g_ceilingTextureId;
       u32 color;
 
       if (p > 0) {

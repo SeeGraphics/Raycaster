@@ -68,7 +68,7 @@ int map_loadFromCSV(const char *filepath)
   char buffer[512];
   int row = 0;
 
-  while (row < MAP_WIDTH && fgets(buffer, sizeof(buffer), file))
+  while (row < MAP_HEIGHT && fgets(buffer, sizeof(buffer), file))
   {
     char *line = buffer;
     while (*line && isspace((unsigned char)*line))
@@ -92,26 +92,26 @@ int map_loadFromCSV(const char *filepath)
         return -1;
       }
 
-      if (col >= MAP_HEIGHT)
+      if (col >= MAP_WIDTH)
       {
         fprintf(stderr,
                 "\033[31m[ERROR] Too many columns in map row %d (max %d)\033[0m\n",
-                row, MAP_HEIGHT);
+                row, MAP_WIDTH);
         fclose(file);
         map_applyDefault();
         return -1;
       }
 
-      worldMap[row][col] = (int)value;
+      worldMap[col][row] = (int)value;
       col++;
       token = strtok(NULL, ",");
     }
 
-    if (col != MAP_HEIGHT)
+    if (col != MAP_WIDTH)
     {
       fprintf(stderr,
               "\033[31m[ERROR] Map row %d has %d columns, expected %d\033[0m\n",
-              row, col, MAP_HEIGHT);
+              row, col, MAP_WIDTH);
       fclose(file);
       map_applyDefault();
       return -1;
@@ -120,11 +120,11 @@ int map_loadFromCSV(const char *filepath)
     row++;
   }
 
-  if (row != MAP_WIDTH)
+  if (row != MAP_HEIGHT)
   {
     fprintf(stderr,
             "\033[31m[ERROR] Map file '%s' contains %d rows, expected %d\033[0m\n",
-            filepath, row, MAP_WIDTH);
+            filepath, row, MAP_HEIGHT);
     fclose(file);
     map_applyDefault();
     return -1;

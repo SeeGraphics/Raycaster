@@ -1,5 +1,6 @@
-#include "entities.h"
 #include "animation.h"
+#include "entities.h"
+#include "raycast.h"
 #include "types.h"
 #include <ctype.h>
 #include <stdio.h>
@@ -232,6 +233,31 @@ static int json_get_double(const char *start, const char *end,
   }
 
   return 0;
+}
+
+static void entities_parse_settings(const char *json)
+{
+  if (!json)
+    return;
+
+  char pattern[64];
+  snprintf(pattern, sizeof(pattern), "\"%s\"", "settings");
+  const char *section = strstr(json, pattern);
+  if (!section)
+    return;
+
+  const char *objectStart = strchr(section, '{');
+  if (!objectStart)
+    return;
+  const char *objectEnd = find_matching(objectStart, '{', '}');
+  if (!objectEnd)
+    return;
+
+  double value;
+  if (json_get_double(objectStart, objectEnd, "floor_texture", &value) == 1)
+    g_floorTextureId = (int)value;
+  if (json_get_double(objectStart, objectEnd, "ceiling_texture", &value) == 1)
+    g_ceilingTextureId = (int)value;
 }
 
 static int texture_from_name(const char *name, i32 *out)
@@ -504,6 +530,8 @@ static int entities_loadFromJSONFile(const char *path)
     return -1;
   }
   buffer[length] = '\0';
+
+  entities_parse_settings(buffer);
 
   worldSpriteCount = 0;
   int result = 0;

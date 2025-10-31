@@ -4,7 +4,7 @@
 
 ---
 
-This is my **first attempt** at a software Renderer.
+This is my **first attempt** at a software renderer.
 It’s a **heavy work in progress** with plenty of features to come.
 
 ---

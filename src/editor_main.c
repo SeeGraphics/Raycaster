@@ -44,7 +44,8 @@ typedef enum EditorMode
   EDIT_MODE_WALLS = 0,
   EDIT_MODE_DECORATIONS,
   EDIT_MODE_PICKUPS,
-  EDIT_MODE_ENEMIES
+  EDIT_MODE_ENEMIES,
+  EDIT_MODE_SPAWN
 } EditorMode;
 
 #ifdef __cplusplus
@@ -58,7 +59,27 @@ extern "C" {
 static int g_levelTiles[MAP_WIDTH][MAP_HEIGHT];
 static bool g_levelDirty = true;
 static bool g_mapNeedsSave = false;
-static const char *g_mapFilePath = "levels/1/map.csv";
+typedef struct LevelInfo
+{
+  const char *label;
+  const char *mapPath;
+  const char *entitiesPath;
+} LevelInfo;
+
+static const LevelInfo g_levelInfos[] = {
+    {"Level 1", "levels/1/map.csv", "levels/1/entities.json"},
+    {"Level 2", "levels/2/map.csv", "levels/2/entities.json"},
+    {"Level 3", "levels/3/map.csv", "levels/3/entities.json"},
+    {"Level 4", "levels/4/map.csv", "levels/4/entities.json"},
+    {"Level 5", "levels/5/map.csv", "levels/5/entities.json"},
+};
+static const int g_levelInfoCount =
+    (int)(sizeof(g_levelInfos) / sizeof(g_levelInfos[0]));
+static int g_selectedLevelIndex = 0;
+static const char *g_mapFilePath = NULL;
+static const char *g_entitiesFilePath = NULL;
+static void editor_loadMapIntoTiles(void);
+static int editor_loadEntities(void);
 static int g_floorTextureSelection = 3;
 static int g_ceilingTextureSelection = 6;
 static int g_selectedWallTileId = 1;
@@ -162,6 +183,10 @@ static int g_selectedDecorationType = 0;
 static int g_selectedPickupType = 0;
 static int g_selectedDecorationIndex = -1;
 static int g_selectedPickupIndex = -1;
+static v2f g_playerSpawnPos = {1.5f, 1.5f};
+static f32 g_playerSpawnDirDegrees = 90.0f;
+static const v2f g_defaultPlayerSpawnPos = {1.5f, 1.5f};
+static const f32 g_defaultPlayerSpawnDirDegrees = 90.0f;
 
 static EditorDecoration *g_decorations = NULL;
 static int g_decorationCount = 0;
@@ -182,11 +207,49 @@ typedef struct EnemyPreviewTexture
 static EnemyPreviewTexture g_enemyPreviews[sizeof(g_enemyTypes) / sizeof(g_enemyTypes[0])];
 
 static bool g_entitiesDirty = false;
-static const char *g_entitiesFilePath = "levels/1/entities.json";
-
 static char g_statusMessage[256] = {0};
 static double g_statusMessageExpire = 0.0;
 static ImVec4 g_statusColor = {0.3f, 0.8f, 0.4f, 1.0f};
+
+static float editor_clampf(float value, float minValue, float maxValue)
+{
+  if (value < minValue)
+    return minValue;
+  if (value > maxValue)
+    return maxValue;
+  return value;
+}
+
+static float editor_wrapDegrees(float degrees)
+{
+  float wrapped = fmodf(degrees, 360.0f);
+  if (wrapped < 0.0f)
+    wrapped += 360.0f;
+  return wrapped;
+}
+
+static void editor_setSpawnPosition(float x, float y)
+{
+  float clampedX = editor_clampf(x, 0.5f, (float)MAP_WIDTH - 0.5f);
+  float clampedY = editor_clampf(y, 0.5f, (float)MAP_HEIGHT - 0.5f);
+  if (fabsf(g_playerSpawnPos.x - clampedX) > 0.0001f ||
+      fabsf(g_playerSpawnPos.y - clampedY) > 0.0001f)
+  {
+    g_playerSpawnPos.x = clampedX;
+    g_playerSpawnPos.y = clampedY;
+    g_entitiesDirty = true;
+  }
+}
+
+static void editor_setSpawnDirection(float degrees)
+{
+  float wrapped = editor_wrapDegrees(degrees);
+  if (fabsf(g_playerSpawnDirDegrees - wrapped) > 0.0001f)
+  {
+    g_playerSpawnDirDegrees = wrapped;
+    g_entitiesDirty = true;
+  }
+}
 
 static ImTextureRef make_texture_ref(GLuint id)
 {
@@ -533,7 +596,8 @@ static void editor_loadEnemyPreviews(void)
     int width = 0;
     int height = 0;
     int comp = 0;
-    unsigned char *pixels = stbi_load(type->previewPath, &width, &height, &comp, STBI_rgb_alpha);
+    unsigned char *pixels =
+        stbi_load(type->previewPath, &width, &height, &comp, STBI_rgb_alpha);
     if (!pixels || width <= 0 || height <= 0)
     {
       if (pixels)
@@ -561,6 +625,20 @@ static void editor_loadEnemyPreviews(void)
       g_enemyPreviews[i].height = height;
     }
   }
+}
+
+static void editor_applyLevelSelection(int index)
+{
+  if (index < 0 || index >= g_levelInfoCount)
+    index = 0;
+  g_selectedLevelIndex = index;
+  g_mapFilePath = g_levelInfos[index].mapPath;
+  g_entitiesFilePath = g_levelInfos[index].entitiesPath;
+}
+
+static const LevelInfo *editor_getCurrentLevel(void)
+{
+  return &g_levelInfos[g_selectedLevelIndex];
 }
 
 static int editor_enemyIndexAtTile(int tileX, int tileY)
@@ -795,6 +873,8 @@ static int editor_loadEntities(void)
   editor_clearDecorations();
   editor_clearPickups();
   editor_clearEnemies();
+  g_playerSpawnPos = g_defaultPlayerSpawnPos;
+  g_playerSpawnDirDegrees = g_defaultPlayerSpawnDirDegrees;
 
   int status = 0;
   bool limitWarned = false;
@@ -1011,6 +1091,14 @@ static int editor_loadEntities(void)
       g_ceilingTextureSelection = (int)value;
       g_ceilingTextureId = g_ceilingTextureSelection;
     }
+    if (editor_jsonGetDouble(start, end, "player_spawn_x", &value) == 1)
+      g_playerSpawnPos.x =
+          editor_clampf((float)value, 0.5f, (float)MAP_WIDTH - 0.5f);
+    if (editor_jsonGetDouble(start, end, "player_spawn_y", &value) == 1)
+      g_playerSpawnPos.y =
+          editor_clampf((float)value, 0.5f, (float)MAP_HEIGHT - 0.5f);
+    if (editor_jsonGetDouble(start, end, "player_spawn_dir", &value) == 1)
+      g_playerSpawnDirDegrees = editor_wrapDegrees((float)value);
     free(settings);
   }
   else
@@ -1026,6 +1114,49 @@ static int editor_loadEntities(void)
   return status;
 }
 
+static void editor_reloadLevel(bool announceSuccess, const char *successFmt)
+{
+  const LevelInfo *level = editor_getCurrentLevel();
+  int mapResult = map_loadFromCSV(g_mapFilePath);
+  editor_loadMapIntoTiles();
+  int entityResult = editor_loadEntities();
+
+  g_levelDirty = true;
+  g_mapNeedsSave = false;
+  g_entitiesDirty = false;
+
+  if (mapResult != 0)
+  {
+    editor_setErrorStatus("Map load failed for %s; using default layout.", level->label);
+    return;
+  }
+  if (entityResult < 0)
+  {
+    editor_setErrorStatus("Entity load failed for %s; defaults restored.", level->label);
+    return;
+  }
+  if (entityResult > 0)
+    return;
+
+  if (announceSuccess && successFmt)
+    editor_setStatus(successFmt, level->label);
+}
+
+static void editor_changeLevel(int index)
+{
+  if (index < 0 || index >= g_levelInfoCount)
+    return;
+  if (index == g_selectedLevelIndex)
+    return;
+
+  editor_applyLevelSelection(index);
+  g_selectedDecorationIndex = -1;
+  g_selectedPickupIndex = -1;
+  g_selectedEnemyIndex = -1;
+
+  editor_reloadLevel(true, "Switched to %s.");
+}
+
 static void editor_saveEntities(void)
 {
   FILE *file = fopen(g_entitiesFilePath, "w");
@@ -1039,7 +1170,10 @@ static void editor_saveEntities(void)
   fprintf(file, "{\n");
   fprintf(file, "  \"settings\": {\n");
   fprintf(file, "    \"floor_texture\": %d,\n", g_floorTextureSelection);
-  fprintf(file, "    \"ceiling_texture\": %d\n", g_ceilingTextureSelection);
+  fprintf(file, "    \"ceiling_texture\": %d,\n", g_ceilingTextureSelection);
+  fprintf(file, "    \"player_spawn_x\": %.3f,\n", g_playerSpawnPos.x);
+  fprintf(file, "    \"player_spawn_y\": %.3f,\n", g_playerSpawnPos.y);
+  fprintf(file, "    \"player_spawn_dir\": %.3f\n", g_playerSpawnDirDegrees);
   fprintf(file, "  },\n");
   fprintf(file, "  \"decorations\": [\n");
 
@@ -1333,15 +1467,10 @@ int main(int argc, char **argv)
   const char *glsl_version = "#version 330";
   editor_imgui_opengl3_init(glsl_version);
 
+  editor_applyLevelSelection(0);
   editor_loadTileTextures();
-  int mapInitResult = map_loadFromCSV(g_mapFilePath);
-  editor_loadMapIntoTiles();
-  int entityInitResult = editor_loadEntities();
+  editor_reloadLevel(false, NULL);
   editor_loadEnemyPreviews();
-  if (mapInitResult != 0)
-    editor_setErrorStatus("Map load failed; using default layout.");
-  else if (entityInitResult < 0)
-    editor_setErrorStatus("Entities load failed; defaults restored.");
 
   bool running = true;
 
@@ -1365,115 +1494,257 @@ int main(int argc, char **argv)
     editor_imgui_sdl2_newFrame();
     igNewFrame();
 
-    if (igBegin("Palette", NULL, ImGuiWindowFlags_NoCollapse))
+    ImGuiViewport *viewport = igGetMainViewport();
+    ImVec2 workPos = viewport->WorkPos;
+    ImVec2 workSize = viewport->WorkSize;
+    float previewWidth = workSize.x * 0.30f;
+    if (previewWidth < 280.0f)
+      previewWidth = 280.0f;
+    ImVec2 previewSize = {previewWidth, workSize.y};
+    ImVec2 editorPos = {workPos.x + previewSize.x, workPos.y};
+    ImVec2 editorSize = {workSize.x - previewSize.x, workSize.y};
+
+    igSetNextWindowPos(workPos, ImGuiCond_Always, (ImVec2){0.0f, 0.0f});
+    igSetNextWindowSize(previewSize, ImGuiCond_Always);
+    if (igBegin("Palette", NULL,
+                ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove |
+                    ImGuiWindowFlags_NoResize))
     {
+      const float buttonSize = 72.0f;
+      const float spacing = igGetStyle()->ItemSpacing.x;
+      ImVec2 availRegion;
+      igGetContentRegionAvail(&availRegion);
+      float availableX = availRegion.x + spacing;
+      int columns =
+          (int)(availableX / (buttonSize + spacing > 0.0f ? buttonSize + spacing : buttonSize));
+      if (columns < 1)
+        columns = 1;
+      const int minColumns = 4;
+      if (columns < minColumns)
+        columns = minColumns;
+
       if (g_editorMode == EDIT_MODE_WALLS)
       {
-        for (int i = 0; i < g_tileTextureCount; ++i)
+        if (igBeginChild_Str("##palette_scroll", (ImVec2){0.0f, 0.0f}, false,
+                             ImGuiWindowFlags_HorizontalScrollbar))
         {
-          igPushID_Int(i);
-          const TileTexture *slot = &g_tileTextures[i];
-          if (slot->mapId <= 0)
+          ImVec2 tableSize = {0.0f, 0.0f};
+          int tableColumns = columns;
+          if (g_tileTextureCount > 0 && tableColumns > g_tileTextureCount)
+            tableColumns = g_tileTextureCount;
+          if (tableColumns < 1)
+            tableColumns = 1;
+          if (g_tileTextureCount > 0 &&
+              igBeginTable("PaletteGrid##walls", tableColumns,
+                           ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_PadOuterX |
+                               ImGuiTableFlags_ScrollX,
+                           tableSize, 0.0f))
           {
-            igPopID();
-            continue;
-          }
+            int gridIndex = 0;
+            for (int i = 0; i < g_tileTextureCount; ++i)
+            {
+              igPushID_Int(i);
+              const TileTexture *slot = &g_tileTextures[i];
+              if (slot->mapId <= 0)
+              {
+                igPopID();
+                continue;
+              }
 
-          igText("%s", slot->name);
-          ImVec4 bg = {0.0f, 0.0f, 0.0f, 0.0f};
-          if (slot->mapId == g_selectedWallTileId)
-            bg = (ImVec4){0.2f, 0.5f, 0.2f, 0.6f};
+              if ((gridIndex % tableColumns) == 0)
+                igTableNextRow(0.0f, buttonSize + spacing * 2.0f);
+              igTableSetColumnIndex(gridIndex % tableColumns);
 
-          char btnId[64];
-          snprintf(btnId, sizeof(btnId), "wallbtn_%d", i);
-          if (igImageButton(btnId, slot->texRef, (ImVec2){72.0f, 72.0f},
-                            (ImVec2){0.0f, 0.0f}, (ImVec2){1.0f, 1.0f}, bg,
-                            (ImVec4){1, 1, 1, 1}))
-          {
-            g_selectedWallTileId = slot->mapId;
+              igBeginGroup();
+              igText("%s", slot->name);
+              ImVec4 bg = {0.0f, 0.0f, 0.0f, 0.0f};
+              if (slot->mapId == g_selectedWallTileId)
+                bg = (ImVec4){0.2f, 0.5f, 0.2f, 0.6f};
+
+              ImVec2 imageSize = {buttonSize, buttonSize};
+              char btnId[64];
+              snprintf(btnId, sizeof(btnId), "wallbtn_%d", i);
+              if (igImageButton(btnId, slot->texRef, imageSize,
+                                (ImVec2){0.0f, 0.0f}, (ImVec2){1.0f, 1.0f}, bg,
+                                (ImVec4){1, 1, 1, 1}))
+              {
+                g_selectedWallTileId = slot->mapId;
+              }
+              igEndGroup();
+              gridIndex++;
+              igPopID();
+            }
+            igEndTable();
           }
-          igPopID();
+          igEndChild();
         }
       }
       else if (g_editorMode == EDIT_MODE_DECORATIONS)
       {
-        for (int i = 0; i < g_decorationTypeCount; ++i)
+        if (igBeginChild_Str("##palette_scroll", (ImVec2){0.0f, 0.0f}, false,
+                             ImGuiWindowFlags_HorizontalScrollbar))
         {
-          igPushID_Int(i);
-          const DecorationType *type = &g_decorationTypes[i];
-          TileTexture *slot = editor_findTileByName(type->textureName);
-          igText("%s", type->label);
-          if (slot)
+          ImVec2 tableSize = {0.0f, 0.0f};
+          int tableColumns = columns;
+          if (g_decorationTypeCount > 0 && tableColumns > g_decorationTypeCount)
+            tableColumns = g_decorationTypeCount;
+          if (tableColumns < 1)
+            tableColumns = 1;
+          if (g_decorationTypeCount > 0 &&
+              igBeginTable("PaletteGrid##decor", tableColumns,
+                           ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_PadOuterX |
+                               ImGuiTableFlags_ScrollX,
+                           tableSize, 0.0f))
           {
-            ImVec4 bg = {0.0f, 0.0f, 0.0f, 0.0f};
-            if (i == g_selectedDecorationType)
-              bg = (ImVec4){0.2f, 0.5f, 0.2f, 0.6f};
-            char btnId[64];
-            snprintf(btnId, sizeof(btnId), "decorbtn_%d", i);
-            if (igImageButton(btnId, slot->texRef, (ImVec2){72.0f, 72.0f},
-                              (ImVec2){0.0f, 0.0f}, (ImVec2){1.0f, 1.0f}, bg,
-                              (ImVec4){1, 1, 1, 1}))
+            int gridIndex = 0;
+            for (int i = 0; i < g_decorationTypeCount; ++i)
             {
-              g_selectedDecorationType = i;
+              igPushID_Int(i);
+              const DecorationType *type = &g_decorationTypes[i];
+              TileTexture *slot = editor_findTileByName(type->textureName);
+              if (slot)
+              {
+                if ((gridIndex % tableColumns) == 0)
+                  igTableNextRow(0.0f, buttonSize + spacing * 2.0f);
+                igTableSetColumnIndex(gridIndex % tableColumns);
+
+                igBeginGroup();
+                igText("%s", type->label);
+                ImVec4 bg = {0.0f, 0.0f, 0.0f, 0.0f};
+                if (i == g_selectedDecorationType)
+                  bg = (ImVec4){0.2f, 0.5f, 0.2f, 0.6f};
+                char btnId[64];
+                snprintf(btnId, sizeof(btnId), "decorbtn_%d", i);
+                ImVec2 imageSize = {buttonSize, buttonSize};
+                if (igImageButton(btnId, slot->texRef, imageSize,
+                                  (ImVec2){0.0f, 0.0f}, (ImVec2){1.0f, 1.0f}, bg,
+                                  (ImVec4){1, 1, 1, 1}))
+                {
+                  g_selectedDecorationType = i;
+                }
+                igEndGroup();
+                gridIndex++;
+              }
+              igPopID();
             }
+            igEndTable();
           }
-          igPopID();
+          igEndChild();
         }
       }
       else if (g_editorMode == EDIT_MODE_PICKUPS)
       {
-        for (int i = 0; i < g_pickupTypeCount; ++i)
+        if (igBeginChild_Str("##palette_scroll", (ImVec2){0.0f, 0.0f}, false,
+                             ImGuiWindowFlags_HorizontalScrollbar))
         {
-          igPushID_Int(i);
-          const PickupType *type = &g_pickupTypes[i];
-          TileTexture *slot = editor_findTileByName(type->textureName);
-          igText("%s", type->label);
-          if (slot)
+          ImVec2 tableSize = {0.0f, 0.0f};
+          int tableColumns = columns;
+          if (g_pickupTypeCount > 0 && tableColumns > g_pickupTypeCount)
+            tableColumns = g_pickupTypeCount;
+          if (tableColumns < 1)
+            tableColumns = 1;
+          if (g_pickupTypeCount > 0 &&
+              igBeginTable("PaletteGrid##pickups", tableColumns,
+                           ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_PadOuterX |
+                               ImGuiTableFlags_ScrollX,
+                           tableSize, 0.0f))
           {
-            ImVec4 bg = {0.0f, 0.0f, 0.0f, 0.0f};
-            if (i == g_selectedPickupType)
-              bg = (ImVec4){0.2f, 0.5f, 0.2f, 0.6f};
-            char btnId[64];
-            snprintf(btnId, sizeof(btnId), "pickupbtn_%d", i);
-            if (igImageButton(btnId, slot->texRef, (ImVec2){72.0f, 72.0f},
-                              (ImVec2){0.0f, 0.0f}, (ImVec2){1.0f, 1.0f}, bg,
-                              (ImVec4){1, 1, 1, 1}))
+            int gridIndex = 0;
+            for (int i = 0; i < g_pickupTypeCount; ++i)
             {
-              g_selectedPickupType = i;
+              igPushID_Int(i);
+              const PickupType *type = &g_pickupTypes[i];
+              TileTexture *slot = editor_findTileByName(type->textureName);
+              if (slot)
+              {
+                if ((gridIndex % tableColumns) == 0)
+                  igTableNextRow(0.0f, buttonSize + spacing * 2.0f);
+                igTableSetColumnIndex(gridIndex % tableColumns);
+
+                igBeginGroup();
+                igText("%s", type->label);
+                ImVec4 bg = {0.0f, 0.0f, 0.0f, 0.0f};
+                if (i == g_selectedPickupType)
+                  bg = (ImVec4){0.2f, 0.5f, 0.2f, 0.6f};
+                char btnId[64];
+                snprintf(btnId, sizeof(btnId), "pickupbtn_%d", i);
+                ImVec2 imageSize = {buttonSize, buttonSize};
+                if (igImageButton(btnId, slot->texRef, imageSize,
+                                  (ImVec2){0.0f, 0.0f}, (ImVec2){1.0f, 1.0f}, bg,
+                                  (ImVec4){1, 1, 1, 1}))
+                {
+                  g_selectedPickupType = i;
+                }
+                igEndGroup();
+                gridIndex++;
+              }
+              igPopID();
             }
+            igEndTable();
           }
-          igPopID();
+          igEndChild();
         }
       }
       else if (g_editorMode == EDIT_MODE_ENEMIES)
       {
-        for (int i = 0; i < g_enemyTypeCount; ++i)
+        if (igBeginChild_Str("##palette_scroll", (ImVec2){0.0f, 0.0f}, false,
+                             ImGuiWindowFlags_HorizontalScrollbar))
         {
-          igPushID_Int(i);
-          const EnemyPreviewTexture *preview = &g_enemyPreviews[i];
-          bool selected = (i == g_selectedEnemyType);
-          ImVec4 bg = selected ? (ImVec4){0.2f, 0.5f, 0.2f, 0.6f}
-                               : (ImVec4){0.0f, 0.0f, 0.0f, 0.0f};
-          ImVec4 tint = selected ? (ImVec4){1.0f, 1.0f, 1.0f, 1.0f}
-                                 : (ImVec4){1.0f, 1.0f, 1.0f, 0.85f};
-          ImVec2 size = {72.0f, 72.0f};
-
-          if (preview->id)
+          ImVec2 tableSize = {0.0f, 0.0f};
+          int tableColumns = columns;
+          if (g_enemyTypeCount > 0 && tableColumns > g_enemyTypeCount)
+            tableColumns = g_enemyTypeCount;
+          if (tableColumns < 1)
+            tableColumns = 1;
+          if (g_enemyTypeCount > 0 &&
+              igBeginTable("PaletteGrid##enemies", tableColumns,
+                           ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_PadOuterX |
+                               ImGuiTableFlags_ScrollX,
+                           tableSize, 0.0f))
           {
-            if (igImageButton("enemy_preview", preview->texRef, size,
-                              (ImVec2){0.0f, 0.0f}, (ImVec2){1.0f, 1.0f}, bg, tint))
+            int gridIndex = 0;
+            for (int i = 0; i < g_enemyTypeCount; ++i)
             {
-              g_selectedEnemyType = i;
+              igPushID_Int(i);
+              const EnemyPreviewTexture *preview = &g_enemyPreviews[i];
+              bool selected = (i == g_selectedEnemyType);
+              ImVec4 bg = selected ? (ImVec4){0.2f, 0.5f, 0.2f, 0.6f}
+                                   : (ImVec4){0.0f, 0.0f, 0.0f, 0.0f};
+              ImVec4 tint = selected ? (ImVec4){1.0f, 1.0f, 1.0f, 1.0f}
+                                     : (ImVec4){1.0f, 1.0f, 1.0f, 0.85f};
+              ImVec2 size = {buttonSize, buttonSize};
+
+              if ((gridIndex % tableColumns) == 0)
+                igTableNextRow(0.0f, buttonSize + spacing * 2.0f);
+              igTableSetColumnIndex(gridIndex % tableColumns);
+
+              igBeginGroup();
+              if (preview->id)
+              {
+                if (igImageButton("enemy_preview", preview->texRef, size,
+                                  (ImVec2){0.0f, 0.0f}, (ImVec2){1.0f, 1.0f}, bg, tint))
+                {
+                  g_selectedEnemyType = i;
+                }
+              }
+              else
+              {
+                if (igButton("Select##enemy", size))
+                  g_selectedEnemyType = i;
+              }
+              igText("%s", g_enemyTypes[i].label);
+              igEndGroup();
+              gridIndex++;
+              igPopID();
             }
+            igEndTable();
           }
-          else
-          {
-            if (igButton("Select##enemy", size))
-              g_selectedEnemyType = i;
-          }
-          igText("%s", g_enemyTypes[i].label);
-          igPopID();
+          igEndChild();
         }
+      }
+      else if (g_editorMode == EDIT_MODE_SPAWN)
+      {
+        igTextWrapped("Spawn mode:\n  Left click to move the spawn point\n  Right click to rotate the facing direction");
       }
       else
       {
@@ -1482,35 +1753,45 @@ int main(int argc, char **argv)
       igEnd();
     }
 
-    if (igBegin("Level Editing", NULL, ImGuiWindowFlags_NoCollapse))
+    igSetNextWindowPos(editorPos, ImGuiCond_Always, (ImVec2){0.0f, 0.0f});
+    igSetNextWindowSize(editorSize, ImGuiCond_Always);
+    if (igBegin("Level Editing", NULL,
+                ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove |
+                    ImGuiWindowFlags_NoResize))
     {
+      const LevelInfo *currentLevel = editor_getCurrentLevel();
+      igText("Level");
+      igSameLine(0.0f, 6.0f);
+      if (igBeginCombo("##level_combo", currentLevel->label, 0))
+      {
+        for (int i = 0; i < g_levelInfoCount; ++i)
+        {
+          bool selected = (i == g_selectedLevelIndex);
+          if (igSelectable_Bool(g_levelInfos[i].label, selected, 0,
+                                (ImVec2){0.0f, 0.0f}))
+          {
+            editor_changeLevel(i);
+            currentLevel = editor_getCurrentLevel();
+          }
+          if (selected)
+            igSetItemDefaultFocus();
+        }
+        igEndCombo();
+      }
+      igSameLine(0.0f, 6.0f);
+      if (igButton("Reload Level##level", (ImVec2){0, 0}))
+      {
+        editor_reloadLevel(true, "Reloaded %s.");
+      }
+
+      igSeparator();
       igText("File");
       if (igButton("Save Level", (ImVec2){0, 0}))
       {
         editor_saveMap();
         editor_saveEntities();
-        editor_setStatus("Level saved.");
-      }
-      igSameLine(0.0f, 6.0f);
-      if (igButton("Reload Level", (ImVec2){0, 0}))
-      {
-        int mapResult = map_loadFromCSV(g_mapFilePath);
-        editor_loadMapIntoTiles();
-        int entityResult = editor_loadEntities();
-        g_levelDirty = true;
-        if (mapResult != 0)
-        {
-          editor_setErrorStatus("Map reload failed; using default layout.");
-        }
-        else if (entityResult < 0)
-        {
-          editor_setErrorStatus("Entity reload failed; defaults restored.");
-        }
-        else if (entityResult == 0)
-        {
-          editor_setStatus("Level reloaded.");
-        }
-        /* entityResult > 0 keeps any warning message already set */
+        currentLevel = editor_getCurrentLevel();
+        editor_setStatus("Saved %s.", currentLevel->label);
       }
       bool showedInline = false;
       if (g_mapNeedsSave || g_entitiesDirty)
@@ -1537,6 +1818,8 @@ int main(int argc, char **argv)
       igRadioButton_IntPtr("Pickups", (int *)&g_editorMode, EDIT_MODE_PICKUPS);
       igSameLine(0.0f, 8.0f);
       igRadioButton_IntPtr("Enemies", (int *)&g_editorMode, EDIT_MODE_ENEMIES);
+      igSameLine(0.0f, 8.0f);
+      igRadioButton_IntPtr("Spawn", (int *)&g_editorMode, EDIT_MODE_SPAWN);
 
       igSeparator();
       igText("Floor & Ceiling");
@@ -1547,6 +1830,20 @@ int main(int argc, char **argv)
       igText("Sprite slots used: %d / %d", totalEntities, NUM_SPRITES);
       if (totalEntities >= NUM_SPRITES)
         igTextColored((ImVec4){0.9f, 0.4f, 0.2f, 1.0f}, "Sprite capacity reached - remove entries before adding more.");
+      igSeparator();
+      igText("Player Spawn");
+      igText("Current: (%.2f, %.2f)", g_playerSpawnPos.x, g_playerSpawnPos.y);
+      float spawnPos[2] = {g_playerSpawnPos.x, g_playerSpawnPos.y};
+      if (igInputFloat2("Position##spawn", spawnPos, "%.2f", 0))
+      {
+        editor_setSpawnPosition(spawnPos[0], spawnPos[1]);
+      }
+      float spawnDir = g_playerSpawnDirDegrees;
+      if (igSliderFloat("Direction##spawn", &spawnDir, 0.0f, 360.0f, "%.1f deg", 0))
+      {
+        editor_setSpawnDirection(spawnDir);
+      }
+      igTextDisabled("Use Spawn mode to click in the grid.");
       igSeparator();
 
       if (g_editorMode == EDIT_MODE_WALLS)
@@ -1702,13 +1999,7 @@ int main(int argc, char **argv)
       else if (g_editorMode == EDIT_MODE_ENEMIES)
       {
         const EnemyType *type = &g_enemyTypes[g_selectedEnemyType];
-        const EnemyPreviewTexture *preview = &g_enemyPreviews[g_selectedEnemyType];
         igText("Active enemy: %s", type->label);
-        if (preview->id)
-        {
-          igImage(preview->texRef, (ImVec2){72.0f, 72.0f}, (ImVec2){0.0f, 0.0f},
-                  (ImVec2){1.0f, 1.0f});
-        }
 
         if (igCollapsingHeader_TreeNodeFlags("Enemies##section", ImGuiTreeNodeFlags_DefaultOpen))
         {
@@ -1870,6 +2161,27 @@ int main(int argc, char **argv)
                              EDITOR_COL32(20, 20, 20, 255), 16, 2.0f);
       }
 
+      ImVec2 spawnCenter = {origin.x + g_playerSpawnPos.x * tileSize,
+                            origin.y + g_playerSpawnPos.y * tileSize};
+      float spawnRadius = tileSize * 0.32f;
+      ImU32 spawnFill =
+          (g_editorMode == EDIT_MODE_SPAWN)
+              ? EDITOR_COL32(120, 200, 255, 235)
+              : EDITOR_COL32(90, 150, 220, 200);
+      ImU32 spawnOutline = EDITOR_COL32(15, 70, 140, 255);
+      ImDrawList_AddCircleFilled(drawList, spawnCenter, spawnRadius, spawnFill, 24);
+      ImDrawList_AddCircle(drawList, spawnCenter, spawnRadius, spawnOutline, 24, 2.0f);
+      float dirRad =
+          (float)(g_playerSpawnDirDegrees * (float)M_PI / 180.0f);
+      ImVec2 dirVec = {cosf(dirRad), -sinf(dirRad)};
+      ImVec2 arrowHead = {spawnCenter.x + dirVec.x * spawnRadius,
+                          spawnCenter.y + dirVec.y * spawnRadius};
+      ImVec2 arrowTail = {spawnCenter.x - dirVec.x * (spawnRadius * 0.4f),
+                          spawnCenter.y - dirVec.y * (spawnRadius * 0.4f)};
+      ImDrawList_AddLine(drawList, arrowTail, arrowHead, spawnOutline, 2.2f);
+      ImDrawList_AddCircleFilled(drawList, arrowHead, spawnRadius * 0.18f,
+                                 spawnOutline, 12);
+
       igInvisibleButton("grid_canvas", canvasSize, 0);
       bool hovered = igIsItemHovered(ImGuiHoveredFlags_None);
       ImGuiIO *io = igGetIO_Nil();
@@ -1961,38 +2273,61 @@ int main(int argc, char **argv)
               if (g_selectedPickupIndex == existing)
                 g_selectedPickupIndex = -1;
             }
-          }
-          break;
-          case EDIT_MODE_ENEMIES:
+      }
+      break;
+      case EDIT_MODE_ENEMIES:
+      {
+        int existing = editor_enemyIndexAtTile(tileX, tileY);
+        if (io->MouseClicked[0])
+        {
+          if (existing >= 0)
           {
-            int existing = editor_enemyIndexAtTile(tileX, tileY);
-            if (io->MouseClicked[0])
-            {
-              if (existing >= 0)
-              {
-                g_selectedEnemyIndex = existing;
-              }
-              else
-              {
-                const EnemyType *type = &g_enemyTypes[g_selectedEnemyType];
-                EditorEnemy *created =
-                    editor_addEnemy((float)tileX + 0.5f,
-                                    (float)tileY + 0.5f, type);
-                if (created)
-                  g_selectedEnemyIndex = g_enemyCount - 1;
-              }
-            }
-            if (io->MouseClicked[1] && existing >= 0)
-            {
-              editor_removeEnemyAtIndex(existing);
-              if (g_selectedEnemyIndex == existing)
-                g_selectedEnemyIndex = -1;
-            }
+            g_selectedEnemyIndex = existing;
           }
-          break;
+          else
+          {
+            const EnemyType *type = &g_enemyTypes[g_selectedEnemyType];
+            EditorEnemy *created =
+                editor_addEnemy((float)tileX + 0.5f,
+                                (float)tileY + 0.5f, type);
+            if (created)
+              g_selectedEnemyIndex = g_enemyCount - 1;
+          }
+        }
+        if (io->MouseClicked[1] && existing >= 0)
+        {
+          editor_removeEnemyAtIndex(existing);
+          if (g_selectedEnemyIndex == existing)
+            g_selectedEnemyIndex = -1;
+        }
+      }
+      break;
+      case EDIT_MODE_SPAWN:
+      {
+        if (io->MouseClicked[0])
+        {
+          float newX = (float)tileX + 0.5f;
+          float newY = (float)tileY + 0.5f;
+          editor_setSpawnPosition(newX, newY);
+        }
+        if (io->MouseDown[1])
+        {
+          float pointerX = (io->MousePos.x - origin.x) / tileSize;
+          float pointerY = (io->MousePos.y - origin.y) / tileSize;
+          float deltaX = pointerX - g_playerSpawnPos.x;
+          float deltaY = g_playerSpawnPos.y - pointerY;
+          if (fabsf(deltaX) > 0.001f || fabsf(deltaY) > 0.001f)
+          {
+            float angleDeg =
+                (float)(atan2f(deltaY, deltaX) * (180.0f / (float)M_PI));
+            editor_setSpawnDirection(angleDeg);
           }
         }
       }
+      break;
+      }
+    }
+  }
 
       igDummy((ImVec2){canvasSize.x, canvasSize.y});
 

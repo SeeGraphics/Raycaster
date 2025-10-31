@@ -16,4 +16,6 @@ typedef struct
   f32 x, y;
 } v2f;
 
+#define LEVEL_COUNT 5
+
 #endif

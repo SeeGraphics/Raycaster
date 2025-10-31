@@ -1,0 +1,26 @@
+{
+  "settings": {
+    "floor_texture": 9,
+    "ceiling_texture": 6
+  },
+  "decorations": [
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 8.500,
+      "y": 2.500,
+      "scale": 1.000
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 8.500,
+      "y": 3.500,
+      "scale": 1.000
+    }
+  ],
+  "pickups": [
+  ],
+  "enemies": [
+  ]
+}

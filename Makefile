@@ -1,7 +1,9 @@
 # =========================
 # Config (project-local)
 # =========================
-CIMGUI_DIR   ?= third_party/cimgui
+CIMGUI_DIR        := third_party/cimgui
+CIMGUI_BUILD_DIR  := build/third_party/cimgui
+CIMGUI_LIB        := $(CIMGUI_BUILD_DIR)/cimgui.a
 ifeq ($(wildcard $(CIMGUI_DIR)/cimgui.h),)
   $(error cimgui.h not found at $(CIMGUI_DIR)/cimgui.h)
 endif
@@ -17,19 +19,17 @@ CXXFLAGS = -Wall -Wextra -std=c++17 -Iinclude -Ithird_party `sdl2-config --cflag
 
 # cimgui includes + OpenGL loader define (GLEW)
 IMGUI_INCLUDES   = -I$(CIMGUI_DIR) -I$(CIMGUI_DIR)/imgui -I$(CIMGUI_DIR)/imgui/backends
+IMGUI_DEFINES    = -DIMGUI_USER_CONFIG=\"cimconfig.h\" -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
 GL_LOADER_DEFINE = -DIMGUI_IMPL_OPENGL_LOADER_GLEW
-CFLAGS   += $(IMGUI_INCLUDES) $(GL_LOADER_DEFINE)
-CXXFLAGS += $(IMGUI_INCLUDES) $(GL_LOADER_DEFINE) -DCIMGUI_USE_SDL2 -DCIMGUI_USE_OPENGL3
+CFLAGS   += $(IMGUI_INCLUDES) $(IMGUI_DEFINES) $(GL_LOADER_DEFINE)
+CXXFLAGS += $(IMGUI_INCLUDES) $(IMGUI_DEFINES) $(GL_LOADER_DEFINE) -DCIMGUI_USE_SDL2 -DCIMGUI_USE_OPENGL3
 
-# Platform OpenGL + rpath
+# Platform OpenGL
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
     OPENGL_LIB = -framework OpenGL
-    # build/editor soll die dylib im Repo zur Laufzeit finden
-    RPATH_FLAG = -Wl,-rpath,@executable_path/../third_party/cimgui/build
 else
     OPENGL_LIB = -lGL -ldl -lpthread
-    RPATH_FLAG =
 endif
 
 # Linker libs common
@@ -63,16 +63,6 @@ IMGUI_BACKENDS_CPP  = $(CIMGUI_DIR)/imgui/backends/imgui_impl_sdl2.cpp \
                       $(CIMGUI_DIR)/imgui/backends/imgui_impl_opengl3.cpp
 IMGUI_BACKENDS_OBJS = $(IMGUI_BACKENDS_CPP:$(CIMGUI_DIR)/imgui/backends/%.cpp=$(BUILD_DIR)/imgui_backend_%.o)
 
-IMGUI_CORE_CPP  = $(CIMGUI_DIR)/imgui/imgui.cpp \
-                  $(CIMGUI_DIR)/imgui/imgui_demo.cpp \
-                  $(CIMGUI_DIR)/imgui/imgui_draw.cpp \
-                  $(CIMGUI_DIR)/imgui/imgui_tables.cpp \
-                  $(CIMGUI_DIR)/imgui/imgui_widgets.cpp
-IMGUI_CORE_OBJS = $(IMGUI_CORE_CPP:$(CIMGUI_DIR)/imgui/%.cpp=$(BUILD_DIR)/imgui_core_%.o)
-
-CIMGUI_CPP      = $(CIMGUI_DIR)/cimgui.cpp
-CIMGUI_OBJ      = $(BUILD_DIR)/cimgui.o
-
 EDITOR_TARGET  = $(BUILD_DIR)/editor
 
 EDITOR_LDFLAGS = $(LDFLAGS) -lGLEW $(OPENGL_LIB)
@@ -91,7 +81,7 @@ $(TARGET): $(OBJECTS)
 editor: $(EDITOR_TARGET)
 
 # link editor: editor objs + reuse engine objs (ohne main.o)
-$(EDITOR_TARGET): $(EDITOR_C_OBJS) $(EDITOR_CPP_OBJS) $(IMGUI_BACKENDS_OBJS) $(IMGUI_CORE_OBJS) $(CIMGUI_OBJ) $(filter-out $(BUILD_DIR)/main.o,$(OBJECTS))
+$(EDITOR_TARGET): $(EDITOR_C_OBJS) $(EDITOR_CPP_OBJS) $(IMGUI_BACKENDS_OBJS) $(filter-out $(BUILD_DIR)/main.o,$(OBJECTS)) $(CIMGUI_LIB)
 	@mkdir -p $(dir $@)
 	$(CXX) $^ -o $@ $(EDITOR_LDFLAGS)
 
@@ -118,15 +108,9 @@ $(BUILD_DIR)/imgui_backend_%.o: $(CIMGUI_DIR)/imgui/backends/%.cpp
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# ImGui core sources
-$(BUILD_DIR)/imgui_core_%.o: $(CIMGUI_DIR)/imgui/%.cpp
-	@mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-# cimgui wrapper (C++)
-$(BUILD_DIR)/cimgui.o: $(CIMGUI_CPP)
-	@mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+# Build cimgui static library via CMake script
+$(CIMGUI_LIB):
+	@bash scripts/build_cimgui.sh
 
 # =========================
 # Deps
@@ -135,8 +119,6 @@ $(BUILD_DIR)/cimgui.o: $(CIMGUI_CPP)
 -include $(EDITOR_C_OBJS:.o=.d)
 -include $(EDITOR_CPP_OBJS:.o=.d)
 -include $(IMGUI_BACKENDS_OBJS:.o=.d)
--include $(IMGUI_CORE_OBJS:.o=.d)
--include $(CIMGUI_OBJ:.o=.d)
 
 # =========================
 # Utils

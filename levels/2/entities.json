@@ -1,0 +1,12 @@
+{
+  "settings": {
+    "floor_texture": 9,
+    "ceiling_texture": 6
+  },
+  "decorations": [
+  ],
+  "pickups": [
+  ],
+  "enemies": [
+  ]
+}

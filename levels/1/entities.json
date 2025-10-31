@@ -1,9 +1,54 @@
 {
   "settings": {
-    "floor_texture": 9,
-    "ceiling_texture": 6
+    "floor_texture": 6,
+    "ceiling_texture": 3,
+    "player_spawn_x": 6.500,
+    "player_spawn_y": 2.500,
+    "player_spawn_dir": 270.400
   },
   "decorations": [
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 2.500,
+      "y": 4.500,
+      "scale": 1.000
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 2.500,
+      "y": 8.500,
+      "scale": 1.000
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 6.500,
+      "y": 8.500,
+      "scale": 1.000
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 10.500,
+      "y": 8.500,
+      "scale": 1.000
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 15.500,
+      "y": 8.500,
+      "scale": 1.000
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 19.500,
+      "y": 8.500,
+      "scale": 1.000
+    },
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
@@ -14,271 +59,188 @@
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
-      "x": 18.500,
-      "y": 4.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 7.500,
-      "y": 16.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 16.500,
-      "y": 8.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 16.500,
-      "y": 16.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 17.500,
+      "x": 21.500,
       "y": 5.500,
       "scale": 1.000
     },
     {
       "type": "decoration",
-      "texture": "PILLAR",
+      "texture": "GREENLIGHT",
       "x": 17.500,
-      "y": 6.500,
+      "y": 13.500,
       "scale": 1.000
     },
     {
       "type": "decoration",
-      "texture": "PILLAR",
-      "x": 14.500,
-      "y": 9.500,
+      "texture": "GREENLIGHT",
+      "x": 5.500,
+      "y": 13.500,
       "scale": 1.000
     },
     {
       "type": "decoration",
-      "texture": "BARREL",
-      "x": 4.500,
-      "y": 18.500,
+      "texture": "GREENLIGHT",
+      "x": 2.500,
+      "y": 13.500,
       "scale": 1.000
     },
     {
       "type": "decoration",
-      "texture": "BARREL",
-      "x": 6.500,
-      "y": 18.500,
+      "texture": "GREENLIGHT",
+      "x": 8.500,
+      "y": 13.500,
       "scale": 1.000
     },
     {
       "type": "decoration",
-      "texture": "BARREL",
-      "x": 9.500,
-      "y": 18.500,
+      "texture": "GREENLIGHT",
+      "x": 2.500,
+      "y": 17.500,
       "scale": 1.000
     },
     {
       "type": "decoration",
-      "texture": "BARREL",
-      "x": 14.500,
-      "y": 16.500,
+      "texture": "GREENLIGHT",
+      "x": 5.500,
+      "y": 17.500,
       "scale": 1.000
     },
     {
       "type": "decoration",
-      "texture": "BARREL",
-      "x": 17.500,
-      "y": 16.500,
+      "texture": "GREENLIGHT",
+      "x": 8.500,
+      "y": 17.500,
       "scale": 1.000
     },
     {
       "type": "decoration",
-      "texture": "BARREL",
+      "texture": "GREENLIGHT",
+      "x": 18.500,
+      "y": 17.500,
+      "scale": 1.000
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
       "x": 12.500,
-      "y": 20.500,
+      "y": 17.500,
+      "scale": 1.000
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 16.500,
+      "y": 21.500,
+      "scale": 1.000
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 20.500,
+      "y": 21.500,
+      "scale": 1.000
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 6.500,
+      "y": 21.500,
+      "scale": 1.000
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 3.500,
+      "y": 21.500,
       "scale": 1.000
     },
     {
       "type": "decoration",
       "texture": "PILLAR",
-      "x": 6.500,
+      "x": 12.500,
       "y": 3.500,
       "scale": 1.000
     },
     {
       "type": "decoration",
       "texture": "PILLAR",
-      "x": 4.500,
+      "x": 18.500,
       "y": 3.500,
       "scale": 1.000
     },
     {
       "type": "decoration",
       "texture": "PILLAR",
-      "x": 4.500,
-      "y": 6.500,
+      "x": 14.500,
+      "y": 12.500,
       "scale": 1.000
     },
     {
       "type": "decoration",
       "texture": "PILLAR",
-      "x": 6.500,
-      "y": 6.500,
+      "x": 11.500,
+      "y": 12.500,
+      "scale": 1.000
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 13.500,
+      "y": 18.500,
       "scale": 1.000
     },
     {
       "type": "decoration",
       "texture": "PILLAR",
       "x": 10.500,
-      "y": 17.500,
+      "y": 18.500,
       "scale": 1.000
     },
     {
       "type": "decoration",
-      "texture": "PILLAR",
-      "x": 4.500,
-      "y": 11.500,
+      "texture": "GREENLIGHT",
+      "x": 6.500,
+      "y": 4.500,
       "scale": 1.000
     },
     {
       "type": "decoration",
-      "texture": "PILLAR",
-      "x": 12.500,
-      "y": 16.500,
+      "texture": "BARREL",
+      "x": 5.500,
+      "y": 6.500,
       "scale": 1.000
     },
     {
       "type": "decoration",
-      "texture": "PILLAR",
-      "x": 3.500,
-      "y": 14.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 11.500,
-      "y": 16.500,
+      "texture": "BARREL",
+      "x": 7.500,
+      "y": 6.500,
       "scale": 1.000
     },
     {
       "type": "decoration",
       "texture": "PILLAR",
       "x": 6.500,
-      "y": 14.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 9.500,
-      "y": 16.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 9.500,
-      "y": 15.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 11.500,
-      "y": 15.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 12.500,
-      "y": 15.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 14.500,
-      "y": 14.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 16.500,
-      "y": 14.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 19.500,
-      "y": 14.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 19.500,
-      "y": 11.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 19.500,
-      "y": 10.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 18.500,
-      "y": 9.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 18.500,
-      "y": 8.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 19.500,
-      "y": 7.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 19.500,
       "y": 6.500,
       "scale": 1.000
     }
   ],
   "pickups": [
-    {
-      "type": "pickup",
-      "texture": "MONEY",
-      "x": 11.500,
-      "y": 8.500,
-      "scale": 0.900
-    }
   ],
   "enemies": [
     {
       "type": "enemy",
       "animation": "DEMON_WALK",
       "x": 5.500,
-      "y": 6.500,
+      "y": 3.500,
+      "scale": 1.350,
+      "health": 200
+    },
+    {
+      "type": "enemy",
+      "animation": "DEMON_WALK",
+      "x": 7.500,
+      "y": 3.500,
       "scale": 1.350,
       "health": 200
     },
@@ -286,22 +248,6 @@
       "type": "enemy",
       "animation": "DEMON_WALK",
       "x": 5.500,
-      "y": 3.500,
-      "scale": 1.350,
-      "health": 200
-    },
-    {
-      "type": "enemy",
-      "animation": "DEMON_WALK",
-      "x": 10.500,
-      "y": 3.500,
-      "scale": 1.350,
-      "health": 200
-    },
-    {
-      "type": "enemy",
-      "animation": "DEMON_WALK",
-      "x": 9.500,
       "y": 5.500,
       "scale": 1.350,
       "health": 200
@@ -309,16 +255,8 @@
     {
       "type": "enemy",
       "animation": "DEMON_WALK",
-      "x": 12.500,
+      "x": 7.500,
       "y": 5.500,
-      "scale": 1.350,
-      "health": 200
-    },
-    {
-      "type": "enemy",
-      "animation": "DEMON_WALK",
-      "x": 13.500,
-      "y": 2.500,
       "scale": 1.350,
       "health": 200
     }

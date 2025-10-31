@@ -172,11 +172,15 @@ int handleInput(Engine *engine, double deltaTime) {
                   engine, weaponProperties[engine->player.selectedGun].damage);
             }
             break;
-          case MINIGUN: // TODO: spam clicking LMB leads to a shooting animation but no ammo gets used until LMB is held
+          case MINIGUN:
             if (!animations.minigun_shoot.playing) {
               animations.minigun_shoot.playing = 1;
+              weaponProperties[engine->player.selectedGun].ammunition--;
               playMinigunShot(&engine->sound);
+              enemies_applyHitscanDamage(
+                  engine, weaponProperties[engine->player.selectedGun].damage);
             }
+            break;
           default:
             break;
           }

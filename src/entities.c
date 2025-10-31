@@ -1,8 +1,10 @@
 #include "animation.h"
 #include "entities.h"
+#include "player.h"
 #include "raycast.h"
 #include "types.h"
 #include <ctype.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +12,25 @@
 static Sprite worldSprites[NUM_SPRITES];
 static i32 worldSpriteCount = 0;
 static int worldInitialized = 0;
+
+static double g_playerSpawnX = POS_X;
+static double g_playerSpawnY = POS_Y;
+static double g_playerSpawnDirDegrees = 0.0;
+
+static double entities_calculateDirDegrees(double dirX, double dirY)
+{
+  double angle = atan2(-dirY, dirX) * (180.0 / M_PI);
+  if (angle < 0.0)
+    angle += 360.0;
+  return angle;
+}
+
+static void entities_resetSpawnToDefaults(void)
+{
+  g_playerSpawnX = POS_X;
+  g_playerSpawnY = POS_Y;
+  g_playerSpawnDirDegrees = entities_calculateDirDegrees(DIR_X, DIR_Y);
+}
 
 static Animation *animation_from_name(const char *name);
 
@@ -53,6 +74,7 @@ static void fill_unused_slots(void)
 static void entities_populateDefaults(void)
 {
   worldSpriteCount = 0;
+  entities_resetSpawnToDefaults();
 
   static const struct
   {
@@ -258,6 +280,17 @@ static void entities_parse_settings(const char *json)
     g_floorTextureId = (int)value;
   if (json_get_double(objectStart, objectEnd, "ceiling_texture", &value) == 1)
     g_ceilingTextureId = (int)value;
+  if (json_get_double(objectStart, objectEnd, "player_spawn_x", &value) == 1)
+    g_playerSpawnX = value;
+  if (json_get_double(objectStart, objectEnd, "player_spawn_y", &value) == 1)
+    g_playerSpawnY = value;
+  if (json_get_double(objectStart, objectEnd, "player_spawn_dir", &value) == 1)
+  {
+    double wrapped = fmod(value, 360.0);
+    if (wrapped < 0.0)
+      wrapped += 360.0;
+    g_playerSpawnDirDegrees = wrapped;
+  }
 }
 
 static int texture_from_name(const char *name, i32 *out)
@@ -531,6 +564,7 @@ static int entities_loadFromJSONFile(const char *path)
   }
   buffer[length] = '\0';
 
+  entities_resetSpawnToDefaults();
   entities_parse_settings(buffer);
 
   worldSpriteCount = 0;
@@ -558,12 +592,23 @@ static int entities_loadFromJSONFile(const char *path)
   return 0;
 }
 
+void entities_getPlayerSpawn(double *outX, double *outY, double *outDirDegrees)
+{
+  if (outX)
+    *outX = g_playerSpawnX;
+  if (outY)
+    *outY = g_playerSpawnY;
+  if (outDirDegrees)
+    *outDirDegrees = g_playerSpawnDirDegrees;
+}
+
 Sprite *entities_createWorldSprites(void)
 {
   if (worldInitialized)
     return worldSprites;
 
   worldSpriteCount = 0;
+  entities_resetSpawnToDefaults();
 
   if (entities_loadFromJSONFile("levels/1/entities.json") != 0)
   {
@@ -591,4 +636,5 @@ void entities_reset(void)
 {
   worldInitialized = 0;
   worldSpriteCount = 0;
+  entities_resetSpawnToDefaults();
 }

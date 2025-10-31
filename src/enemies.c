@@ -124,11 +124,5 @@ void enemies_applyHitscanDamage(Engine *engine, i32 damage)
   {
     target->health = 0;
     target->active = 0;
-
-    if (target->appearance.type == SPRITE_VISUAL_ANIMATION &&
-        target->appearance.anim.animation)
-    {
-      target->appearance.anim.animation->playing = 0;
-    }
   }
 }

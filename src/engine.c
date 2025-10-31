@@ -2,7 +2,33 @@
 #include "entities.h"
 #include "map.h"
 #include "sound.h"
+#include <math.h>
 #include <stdio.h>
+
+static void engine_applyPlayerSpawn(Player *player)
+{
+  if (!player)
+    return;
+
+  double spawnX = player->posX;
+  double spawnY = player->posY;
+  double spawnDirDegrees = 0.0;
+  entities_getPlayerSpawn(&spawnX, &spawnY, &spawnDirDegrees);
+
+  player->posX = spawnX;
+  player->posY = spawnY;
+
+  const double degToRad = 3.14159265358979323846 / 180.0;
+  double dirRad = spawnDirDegrees * degToRad;
+  player->dirX = cos(dirRad);
+  player->dirY = -sin(dirRad);
+
+  double planeScale = hypot(PLANE_X, PLANE_Y);
+  if (planeScale <= 0.0)
+    planeScale = 0.88;
+  player->planeX = player->dirY * planeScale;
+  player->planeY = -player->dirX * planeScale;
+}
 
 int engine_init(Engine *engine) {
 
@@ -26,6 +52,7 @@ int engine_init(Engine *engine) {
   engine->sound = createSound();
   engine->sprites = entities_createWorldSprites();
   engine->font = font_init();
+  engine_applyPlayerSpawn(&engine->player);
 
   // Initialize Time variables
   engine->time = SDL_GetTicks();

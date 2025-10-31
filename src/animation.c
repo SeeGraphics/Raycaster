@@ -3,7 +3,7 @@
 #include "player.h"
 #include "types.h"
 #include <SDL.h>
-#include <SDL_image.h>
+#include <SDL2/SDL_image.h>
 #include <stdio.h>
 
 AnimationRegistry animations;

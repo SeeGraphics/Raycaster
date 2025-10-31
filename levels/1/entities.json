@@ -237,6 +237,20 @@
       "door_y": 21
     }
   ],
+  "wall_texts": [
+    {
+      "text": "Test hello world",
+      "x": 7.500,
+      "y": 23.500,
+      "facing": "NORTH",
+      "scale": 1.000,
+      "font_size": 28,
+      "color_r": 255,
+      "color_g": 255,
+      "color_b": 255,
+      "color_a": 255
+    }
+  ],
   "enemies": [
     {
       "type": "enemy",
@@ -244,7 +258,7 @@
       "x": 5.500,
       "y": 3.500,
       "scale": 1.350,
-      "health": 200
+      "health": 100
     },
     {
       "type": "enemy",
@@ -252,7 +266,7 @@
       "x": 7.500,
       "y": 3.500,
       "scale": 1.350,
-      "health": 200
+      "health": 100
     },
     {
       "type": "enemy",
@@ -260,7 +274,7 @@
       "x": 5.500,
       "y": 5.500,
       "scale": 1.350,
-      "health": 200
+      "health": 100
     },
     {
       "type": "enemy",
@@ -268,31 +282,7 @@
       "x": 7.500,
       "y": 5.500,
       "scale": 1.350,
-      "health": 200
-    },
-    {
-      "type": "enemy",
-      "animation": "DEMON_WALK",
-      "x": 15.500,
-      "y": 16.500,
-      "scale": 1.350,
-      "health": 200
-    },
-    {
-      "type": "enemy",
-      "animation": "DEMON_WALK",
-      "x": 14.500,
-      "y": 18.500,
-      "scale": 1.350,
-      "health": 200
-    },
-    {
-      "type": "enemy",
-      "animation": "DEMON_WALK",
-      "x": 12.500,
-      "y": 18.500,
-      "scale": 1.350,
-      "health": 200
+      "health": 100
     }
   ]
 }

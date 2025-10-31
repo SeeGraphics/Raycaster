@@ -153,6 +153,75 @@ void perform_raycasting(Engine *engine)
         }
       }
 
+      const u32 *wallTextPixels = NULL;
+      float wallTextScale = 1.0f;
+      float wallTextBaseCovX = 1.0f;
+      float wallTextBaseCovY = 1.0f;
+      if (entities_getWallTextAt(mapX, mapY, faceX, faceY, &wallTextPixels,
+                                 &wallTextScale, &wallTextBaseCovX,
+                                 &wallTextBaseCovY) &&
+          wallTextPixels)
+      {
+        float coverageX = wallTextBaseCovX * wallTextScale;
+        float coverageY = wallTextBaseCovY * wallTextScale;
+        if (coverageX <= 0.0f)
+          coverageX = wallTextBaseCovX;
+        if (coverageY <= 0.0f)
+          coverageY = wallTextBaseCovY;
+        if (coverageX <= 0.0f)
+          coverageX = 1.0f;
+        if (coverageY <= 0.0f)
+          coverageY = 1.0f;
+        if (coverageX > 1.0f)
+          coverageX = 1.0f;
+        if (coverageY > 1.0f)
+          coverageY = 1.0f;
+
+        float u = ((float)texX + 0.5f) / (float)TEXT_WIDTH;
+        float v = ((float)texY + 0.5f) / (float)TEXT_HEIGHT;
+        float localU = (u - 0.5f) / coverageX + 0.5f;
+        float localV = (v - 0.5f) / coverageY + 0.5f;
+        if (localU >= 0.0f && localU <= 1.0f && localV >= 0.0f &&
+            localV <= 1.0f)
+        {
+          int sampleX = (int)(localU * (float)(TEXT_WIDTH - 1));
+          int sampleY = (int)(localV * (float)(TEXT_HEIGHT - 1));
+          if (sampleX >= 0 && sampleX < TEXT_WIDTH && sampleY >= 0 &&
+              sampleY < TEXT_HEIGHT)
+          {
+            u32 textColor = wallTextPixels[sampleY * TEXT_WIDTH + sampleX];
+            Uint8 alpha = (Uint8)((textColor >> 24) & 0xFFu);
+            if (alpha != 0)
+            {
+              Uint8 srcR = (Uint8)((textColor >> 16) & 0xFFu);
+              Uint8 srcG = (Uint8)((textColor >> 8) & 0xFFu);
+              Uint8 srcB = (Uint8)(textColor & 0xFFu);
+
+              Uint8 dstR = (Uint8)((color >> 16) & 0xFFu);
+              Uint8 dstG = (Uint8)((color >> 8) & 0xFFu);
+              Uint8 dstB = (Uint8)(color & 0xFFu);
+
+              Uint32 invAlpha = 255u - (Uint32)alpha;
+              Uint8 outR =
+                  (Uint8)(((Uint32)srcR * (Uint32)alpha +
+                           (Uint32)dstR * invAlpha + 127u) /
+                          255u);
+              Uint8 outG =
+                  (Uint8)(((Uint32)srcG * (Uint32)alpha +
+                           (Uint32)dstG * invAlpha + 127u) /
+                          255u);
+              Uint8 outB =
+                  (Uint8)(((Uint32)srcB * (Uint32)alpha +
+                           (Uint32)dstB * invAlpha + 127u) /
+                          255u);
+
+              color = (0xFFu << 24) | ((Uint32)outR << 16) |
+                      ((Uint32)outG << 8) | (Uint32)outB;
+            }
+          }
+        }
+      }
+
       engine->game.Rbuffer[y * RENDER_WIDTH + x] = color;
     }
     // set z-buffer for sprites

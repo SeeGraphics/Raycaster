@@ -46,6 +46,7 @@ typedef enum EditorMode
   EDIT_MODE_PICKUPS,
   EDIT_MODE_ENEMIES,
   EDIT_MODE_DECALS,
+  EDIT_MODE_TEXT,
   EDIT_MODE_SPAWN
 } EditorMode;
 
@@ -169,6 +170,20 @@ typedef struct EditorDecal
   int tileY;
 } EditorDecal;
 
+#define WALL_TEXT_MAX_CHARS 128
+
+typedef struct EditorWallText
+{
+  float x, y;
+  int tileX;
+  int tileY;
+  int facingIndex;
+  char text[WALL_TEXT_MAX_CHARS];
+  float scale;
+  int fontSize;
+  ImVec4 color;
+} EditorWallText;
+
 static int editor_findDecorationTypeByJson(const char *jsonName)
 {
   if (!jsonName)
@@ -217,7 +232,7 @@ typedef struct EnemyType
 } EnemyType;
 
 static const EnemyType g_enemyTypes[] = {
-    {"Demon", "DEMON_WALK", "assets/textures/entities/demon/preview/preview.png", 200, 1.35f},
+    {"Demon", "DEMON_WALK", "assets/textures/entities/demon/preview/preview.png", 100, 1.35f},
 };
 static const int g_enemyTypeCount =
     (int)(sizeof(g_enemyTypes) / sizeof(g_enemyTypes[0]));
@@ -234,6 +249,10 @@ static int g_selectedDecorationIndex = -1;
 static int g_selectedPickupIndex = -1;
 static int g_selectedDecalType = 0;
 static int g_selectedDecalIndex = -1;
+static EditorWallText *g_wallTexts = NULL;
+static int g_wallTextCount = 0;
+static int g_wallTextCapacity = 0;
+static int g_selectedWallTextIndex = -1;
 static v2f g_playerSpawnPos = {1.5f, 1.5f};
 static f32 g_playerSpawnDirDegrees = 90.0f;
 static const v2f g_defaultPlayerSpawnPos = {1.5f, 1.5f};
@@ -268,6 +287,15 @@ static double g_statusMessageExpire = 0.0;
 static ImVec4 g_statusColor = {0.3f, 0.8f, 0.4f, 1.0f};
 
 static float editor_clampf(float value, float minValue, float maxValue)
+{
+  if (value < minValue)
+    return minValue;
+  if (value > maxValue)
+    return maxValue;
+  return value;
+}
+
+static int editor_clampi(int value, int minValue, int maxValue)
 {
   if (value < minValue)
     return minValue;
@@ -546,6 +574,45 @@ static void editor_setErrorStatus(const char *fmt, ...)
   va_end(args);
 }
 
+static void editor_writeEscapedJsonString(FILE *file, const char *value)
+{
+  if (!value)
+  {
+    fputs("\"\"", file);
+    return;
+  }
+
+  fputc('"', file);
+  for (const unsigned char *ptr = (const unsigned char *)value; *ptr; ++ptr)
+  {
+    unsigned char c = *ptr;
+    switch (c)
+    {
+    case '\\':
+    case '"':
+      fputc('\\', file);
+      fputc(c, file);
+      break;
+    case '\n':
+      fputs("\\n", file);
+      break;
+    case '\r':
+      fputs("\\r", file);
+      break;
+    case '\t':
+      fputs("\\t", file);
+      break;
+    default:
+      if (c < 32)
+        fprintf(file, "\\u%04x", c);
+      else
+        fputc(c, file);
+      break;
+    }
+  }
+  fputc('"', file);
+}
+
 static void editor_clearStatus(void)
 {
   g_statusMessage[0] = '\0';
@@ -566,7 +633,8 @@ static bool editor_statusActive(void)
 
 static int editor_totalEntityCount(void)
 {
-  return g_decorationCount + g_pickupCount + g_enemyCount + g_decalCount;
+  return g_decorationCount + g_pickupCount + g_enemyCount + g_decalCount +
+         g_wallTextCount;
 }
 
 static bool editor_hasSpriteCapacity(void)
@@ -876,6 +944,108 @@ static EditorEnemy *editor_addEnemy(float x, float y, const EnemyType *type)
   return result;
 }
 
+static void editor_ensureWallTextCapacity(int required)
+{
+  if (required <= g_wallTextCapacity)
+    return;
+  int newCap = g_wallTextCapacity ? g_wallTextCapacity * 2 : 8;
+  while (newCap < required)
+    newCap *= 2;
+  EditorWallText *newData =
+      (EditorWallText *)realloc(g_wallTexts, newCap * sizeof(EditorWallText));
+  if (!newData)
+    return;
+  g_wallTexts = newData;
+  g_wallTextCapacity = newCap;
+}
+
+static void editor_clearWallTexts(void)
+{
+  g_wallTextCount = 0;
+  g_selectedWallTextIndex = -1;
+}
+
+static void editor_centerWallText(EditorWallText *text)
+{
+  if (!text)
+    return;
+  int tileX = (int)floorf(text->x);
+  int tileY = (int)floorf(text->y);
+  if (tileX < 0)
+    tileX = 0;
+  else if (tileX >= MAP_WIDTH)
+    tileX = MAP_WIDTH - 1;
+  if (tileY < 0)
+    tileY = 0;
+  else if (tileY >= MAP_HEIGHT)
+    tileY = MAP_HEIGHT - 1;
+  text->tileX = tileX;
+  text->tileY = tileY;
+  text->x = (float)tileX + 0.5f;
+  text->y = (float)tileY + 0.5f;
+}
+
+static void editor_applyWallTextFacing(EditorWallText *text, int facingIndex)
+{
+  if (!text)
+    return;
+  if (facingIndex < 0 || facingIndex >= g_decalFacingCount)
+    facingIndex = 0;
+  text->facingIndex = facingIndex;
+}
+
+static EditorWallText *editor_pushWallText(const EditorWallText *source)
+{
+  if (!source)
+    return NULL;
+  editor_ensureWallTextCapacity(g_wallTextCount + 1);
+  if (!g_wallTexts)
+    return NULL;
+  g_wallTexts[g_wallTextCount] = *source;
+  return &g_wallTexts[g_wallTextCount++];
+}
+
+static EditorWallText *editor_addWallText(float x, float y)
+{
+  EditorWallText text;
+  text.x = x;
+  text.y = y;
+  text.scale = 0.6f;
+  text.fontSize = 28;
+  text.color = (ImVec4){1.0f, 1.0f, 1.0f, 1.0f};
+  snprintf(text.text, sizeof(text.text), "Click to continue");
+  editor_centerWallText(&text);
+  int facing = editor_guessDecalFacing(text.tileX, text.tileY);
+  editor_applyWallTextFacing(&text, facing);
+  EditorWallText *result = editor_pushWallText(&text);
+  if (result)
+    g_entitiesDirty = true;
+  return result;
+}
+
+static int editor_findWallTextAtTile(int tileX, int tileY)
+{
+  for (int i = 0; i < g_wallTextCount; ++i)
+  {
+    if (g_wallTexts[i].tileX == tileX && g_wallTexts[i].tileY == tileY)
+      return i;
+  }
+  return -1;
+}
+
+static void editor_removeWallTextAtIndex(int index)
+{
+  if (index < 0 || index >= g_wallTextCount)
+    return;
+  if (index < g_wallTextCount - 1)
+    memmove(&g_wallTexts[index], &g_wallTexts[index + 1],
+            (size_t)(g_wallTextCount - index - 1) * sizeof(EditorWallText));
+  g_wallTextCount--;
+  if (g_selectedWallTextIndex >= g_wallTextCount)
+    g_selectedWallTextIndex = g_wallTextCount - 1;
+  g_entitiesDirty = true;
+}
+
 static void editor_removeEnemyAtIndex(int index)
 {
   if (index < 0 || index >= g_enemyCount)
@@ -1170,6 +1340,7 @@ static int editor_loadEntities(void)
     editor_clearPickups();
     editor_clearEnemies();
     editor_clearDecals();
+    editor_clearWallTexts();
     g_entitiesDirty = false;
     return -1;
   }
@@ -1178,6 +1349,7 @@ static int editor_loadEntities(void)
   editor_clearPickups();
   editor_clearEnemies();
   editor_clearDecals();
+  editor_clearWallTexts();
   g_playerSpawnPos = g_defaultPlayerSpawnPos;
   g_playerSpawnDirDegrees = g_defaultPlayerSpawnDirDegrees;
 
@@ -1430,6 +1602,105 @@ static int editor_loadEntities(void)
     free(decalsArray);
   }
 
+  char *wallTextsArray = editor_extractArray(json, "wall_texts");
+  if (wallTextsArray)
+  {
+    const char *cursor = wallTextsArray + 1;
+    while (cursor && *cursor)
+    {
+      const char *objStart = strchr(cursor, '{');
+      if (!objStart)
+        break;
+      const char *objEnd = editor_findMatching(objStart, '{', '}');
+      if (!objEnd)
+        break;
+
+      double posX = 0.0;
+      double posY = 0.0;
+      double scaleValue = 0.6;
+      double fontSizeValue = 28.0;
+      double colorR = 255.0;
+      double colorG = 255.0;
+      double colorB = 255.0;
+      double colorA = 255.0;
+      char facingName[16];
+      char textBuffer[WALL_TEXT_MAX_CHARS];
+
+      if (editor_jsonGetDouble(objStart, objEnd, "x", &posX) != 1 ||
+          editor_jsonGetDouble(objStart, objEnd, "y", &posY) != 1)
+      {
+        fprintf(stderr, "[EDITOR] Wall text missing coordinates\n");
+        cursor = objEnd + 1;
+        continue;
+      }
+
+      if (editor_jsonGetString(objStart, objEnd, "text", textBuffer,
+                               sizeof(textBuffer)) != 1)
+      {
+        fprintf(stderr, "[EDITOR] Wall text missing text content\n");
+        cursor = objEnd + 1;
+        continue;
+      }
+
+      if (editor_jsonGetString(objStart, objEnd, "facing", facingName,
+                               sizeof(facingName)) != 1)
+      {
+        snprintf(facingName, sizeof(facingName), "EAST");
+      }
+
+      editor_jsonGetDouble(objStart, objEnd, "scale", &scaleValue);
+      editor_jsonGetDouble(objStart, objEnd, "font_size", &fontSizeValue);
+      editor_jsonGetDouble(objStart, objEnd, "color_r", &colorR);
+      editor_jsonGetDouble(objStart, objEnd, "color_g", &colorG);
+      editor_jsonGetDouble(objStart, objEnd, "color_b", &colorB);
+      editor_jsonGetDouble(objStart, objEnd, "color_a", &colorA);
+
+      EditorWallText text;
+      text.x = (float)posX;
+      text.y = (float)posY;
+      text.scale = (float)scaleValue;
+      if (text.scale < 0.1f)
+        text.scale = 0.1f;
+      if (text.scale > 1.0f)
+        text.scale = 1.0f;
+      text.fontSize = (int)(fontSizeValue + 0.5);
+      if (text.fontSize < 8)
+        text.fontSize = 8;
+      if (text.fontSize > 96)
+        text.fontSize = 96;
+      text.color.x = (float)(colorR / 255.0);
+      text.color.y = (float)(colorG / 255.0);
+      text.color.z = (float)(colorB / 255.0);
+      text.color.w = (float)(colorA / 255.0);
+      if (text.color.x < 0.0f)
+        text.color.x = 0.0f;
+      if (text.color.x > 1.0f)
+        text.color.x = 1.0f;
+      if (text.color.y < 0.0f)
+        text.color.y = 0.0f;
+      if (text.color.y > 1.0f)
+        text.color.y = 1.0f;
+      if (text.color.z < 0.0f)
+        text.color.z = 0.0f;
+      if (text.color.z > 1.0f)
+        text.color.z = 1.0f;
+      if (text.color.w < 0.0f)
+        text.color.w = 0.0f;
+      if (text.color.w > 1.0f)
+        text.color.w = 1.0f;
+      editor_centerWallText(&text);
+      int facingIdx = editor_decalFacingIndexFromString(facingName);
+      if (facingIdx < 0)
+        facingIdx = 0;
+      editor_applyWallTextFacing(&text, facingIdx);
+      snprintf(text.text, sizeof(text.text), "%s", textBuffer);
+      editor_pushWallText(&text);
+
+      cursor = objEnd + 1;
+    }
+    free(wallTextsArray);
+  }
+
   char *enemiesArray = editor_extractArray(json, "enemies");
   if (enemiesArray)
   {
@@ -1641,6 +1912,37 @@ static void editor_saveEntities(void)
     fprintf(file, "      \"door_x\": %d,\n", decal->doorX);
     fprintf(file, "      \"door_y\": %d\n", decal->doorY);
     fprintf(file, "    }%s\n", (i + 1 < g_decalCount) ? "," : "");
+  }
+
+  fprintf(file, "  ],\n");
+  fprintf(file, "  \"wall_texts\": [\n");
+
+  for (int i = 0; i < g_wallTextCount; ++i)
+  {
+    const EditorWallText *text = &g_wallTexts[i];
+    const char *facingName =
+        (text->facingIndex >= 0 && text->facingIndex < g_decalFacingCount)
+            ? g_decalFacingJson[text->facingIndex]
+            : g_decalFacingJson[0];
+    int colorR = editor_clampi((int)(text->color.x * 255.0f + 0.5f), 0, 255);
+    int colorG = editor_clampi((int)(text->color.y * 255.0f + 0.5f), 0, 255);
+    int colorB = editor_clampi((int)(text->color.z * 255.0f + 0.5f), 0, 255);
+    int colorA = editor_clampi((int)(text->color.w * 255.0f + 0.5f), 0, 255);
+
+    fprintf(file, "    {\n");
+    fprintf(file, "      \"text\": ");
+    editor_writeEscapedJsonString(file, text->text);
+    fprintf(file, ",\n");
+    fprintf(file, "      \"x\": %.3f,\n", text->x);
+    fprintf(file, "      \"y\": %.3f,\n", text->y);
+    fprintf(file, "      \"facing\": \"%s\",\n", facingName);
+    fprintf(file, "      \"scale\": %.3f,\n", text->scale);
+    fprintf(file, "      \"font_size\": %d,\n", text->fontSize);
+    fprintf(file, "      \"color_r\": %d,\n", colorR);
+    fprintf(file, "      \"color_g\": %d,\n", colorG);
+    fprintf(file, "      \"color_b\": %d,\n", colorB);
+    fprintf(file, "      \"color_a\": %d\n", colorA);
+    fprintf(file, "    }%s\n", (i + 1 < g_wallTextCount) ? "," : "");
   }
 
   fprintf(file, "  ],\n");
@@ -2250,6 +2552,114 @@ int main(int argc, char **argv)
           igEndChild();
         }
       }
+      else if (g_editorMode == EDIT_MODE_TEXT)
+      {
+        if (igBeginChild_Str("##text_scroll", (ImVec2){0.0f, 0.0f}, false,
+                             ImGuiWindowFlags_HorizontalScrollbar))
+        {
+          igText("Placed: %d", g_wallTextCount);
+          if (g_wallTextCount == 0)
+            igText("Click a wall tile to place text.");
+
+          for (int i = 0; i < g_wallTextCount; ++i)
+          {
+            igPushID_Int(i);
+            char label[160];
+            const char *preview = g_wallTexts[i].text;
+            if (!preview || preview[0] == '\0')
+              preview = "(empty)";
+            snprintf(label, sizeof(label), "%d: %.24s##walltext_%d", i, preview, i);
+            bool selected = (i == g_selectedWallTextIndex);
+            if (igSelectable_Bool(label, selected, 0, (ImVec2){0.0f, 0.0f}))
+              g_selectedWallTextIndex = i;
+            igPopID();
+          }
+
+          if (g_selectedWallTextIndex >= 0 &&
+              g_selectedWallTextIndex < g_wallTextCount)
+          {
+            EditorWallText *text = &g_wallTexts[g_selectedWallTextIndex];
+            igSeparator();
+            igText("Selected text");
+            if (igInputTextMultiline("Content##walltext", text->text,
+                                     sizeof(text->text), (ImVec2){0.0f, 96.0f},
+                                     ImGuiInputTextFlags_None, NULL, NULL))
+            {
+              g_entitiesDirty = true;
+            }
+
+            if (igSliderFloat("Scale##walltext", &text->scale, 0.1f, 1.0f,
+                              "%.2f", 0))
+            {
+              g_entitiesDirty = true;
+            }
+
+            if (igInputInt("Font Size##walltext", &text->fontSize, 1, 2,
+                           ImGuiInputTextFlags_None))
+            {
+              if (text->fontSize < 8)
+                text->fontSize = 8;
+              if (text->fontSize > 96)
+                text->fontSize = 96;
+              g_entitiesDirty = true;
+            }
+
+            if (igColorEdit4("Color##walltext", (float *)&text->color,
+                             ImGuiColorEditFlags_Float))
+            {
+              g_entitiesDirty = true;
+            }
+
+            const char *facingLabel =
+                (text->facingIndex >= 0 && text->facingIndex < g_decalFacingCount)
+                    ? g_decalFacingLabels[text->facingIndex]
+                    : g_decalFacingLabels[0];
+            if (igBeginCombo("Facing##walltext", facingLabel, 0))
+            {
+              for (int i = 0; i < g_decalFacingCount; ++i)
+              {
+                bool selected = (text->facingIndex == i);
+                if (igSelectable_Bool(g_decalFacingLabels[i], selected, 0,
+                                      (ImVec2){0.0f, 0.0f}))
+                {
+                  editor_applyWallTextFacing(text, i);
+                  g_entitiesDirty = true;
+                }
+                if (selected)
+                  igSetItemDefaultFocus();
+              }
+              igEndCombo();
+            }
+
+            int tileCoords[2] = {text->tileX, text->tileY};
+            if (igInputInt2("Tile##walltext", tileCoords,
+                            ImGuiInputTextFlags_None))
+            {
+              if (tileCoords[0] < 0)
+                tileCoords[0] = 0;
+              else if (tileCoords[0] >= MAP_WIDTH)
+                tileCoords[0] = MAP_WIDTH - 1;
+              if (tileCoords[1] < 0)
+                tileCoords[1] = 0;
+              else if (tileCoords[1] >= MAP_HEIGHT)
+                tileCoords[1] = MAP_HEIGHT - 1;
+              text->tileX = tileCoords[0];
+              text->tileY = tileCoords[1];
+              text->x = (float)text->tileX + 0.5f;
+              text->y = (float)text->tileY + 0.5f;
+              g_entitiesDirty = true;
+            }
+
+            if (igButton("Delete Text", (ImVec2){0, 0}))
+            {
+              editor_removeWallTextAtIndex(g_selectedWallTextIndex);
+              g_selectedWallTextIndex = -1;
+            }
+          }
+
+          igEndChild();
+        }
+      }
       else if (g_editorMode == EDIT_MODE_SPAWN)
       {
         igTextWrapped("Spawn mode:\n  Left click to move the spawn point\n  Right click to rotate the facing direction");
@@ -2328,6 +2738,8 @@ int main(int argc, char **argv)
       igRadioButton_IntPtr("Enemies", (int *)&g_editorMode, EDIT_MODE_ENEMIES);
       igSameLine(0.0f, 8.0f);
       igRadioButton_IntPtr("Decals", (int *)&g_editorMode, EDIT_MODE_DECALS);
+      igSameLine(0.0f, 8.0f);
+      igRadioButton_IntPtr("Text", (int *)&g_editorMode, EDIT_MODE_TEXT);
       igSameLine(0.0f, 8.0f);
       igRadioButton_IntPtr("Spawn", (int *)&g_editorMode, EDIT_MODE_SPAWN);
 
@@ -2791,6 +3203,27 @@ int main(int argc, char **argv)
                            4.0f, 0, 1.5f);
       }
 
+      for (int i = 0; i < g_wallTextCount; ++i)
+      {
+        const EditorWallText *text = &g_wallTexts[i];
+        ImVec2 center = {origin.x + text->x * tileSize,
+                         origin.y + text->y * tileSize};
+        float half = tileSize * 0.18f;
+        ImVec2 p0 = {center.x - half, center.y - half};
+        ImVec2 p1 = {center.x + half, center.y + half};
+        ImU32 fill = (i == g_selectedWallTextIndex)
+                         ? EDITOR_COL32(200, 200, 110, 255)
+                         : EDITOR_COL32(170, 170, 90, 220);
+        ImDrawList_AddRectFilled(drawList, p0, p1, fill, 3.0f, 0);
+        ImDrawList_AddRect(drawList, p0, p1, EDITOR_COL32(60, 60, 20, 255),
+                           3.0f, 0, 1.2f);
+        ImVec2 facingDir = {g_decalFacingVectors[text->facingIndex][0] * half,
+                            g_decalFacingVectors[text->facingIndex][1] * half};
+        ImVec2 arrowEnd = {center.x + facingDir.x, center.y + facingDir.y};
+        ImDrawList_AddLine(drawList, center, arrowEnd,
+                           EDITOR_COL32(40, 40, 10, 255), 2.0f);
+      }
+
       for (int i = 0; i < g_enemyCount; ++i)
       {
         const EditorEnemy *enemy = &g_enemies[i];
@@ -2947,10 +3380,10 @@ int main(int argc, char **argv)
             }
           }
           break;
-          case EDIT_MODE_DECALS:
-          {
-            if (g_pendingDoorAssignmentIndex >= 0)
-            {
+      case EDIT_MODE_DECALS:
+      {
+        if (g_pendingDoorAssignmentIndex >= 0)
+        {
               if (g_levelTiles[tileX][tileY] > 0)
               {
                 ImVec2 doorP0 = {origin.x + tileX * tileSize,
@@ -3024,13 +3457,39 @@ int main(int argc, char **argv)
                   g_selectedDecalIndex = -1;
               }
             }
-          }
-          break;
-          case EDIT_MODE_SPAWN:
+      }
+      break;
+      case EDIT_MODE_TEXT:
+      {
+        int existing = editor_findWallTextAtTile(tileX, tileY);
+        if (io->MouseClicked[0])
+        {
+          if (existing >= 0)
           {
-            if (io->MouseClicked[0])
-            {
-              float newX = (float)tileX + 0.5f;
+            g_selectedWallTextIndex = existing;
+          }
+          else
+          {
+            EditorWallText *created =
+                editor_addWallText((float)tileX + 0.5f,
+                                   (float)tileY + 0.5f);
+            if (created)
+              g_selectedWallTextIndex = g_wallTextCount - 1;
+          }
+        }
+        if (io->MouseClicked[1] && existing >= 0)
+        {
+          editor_removeWallTextAtIndex(existing);
+          if (g_selectedWallTextIndex == existing)
+            g_selectedWallTextIndex = -1;
+        }
+      }
+      break;
+      case EDIT_MODE_SPAWN:
+      {
+        if (io->MouseClicked[0])
+        {
+          float newX = (float)tileX + 0.5f;
               float newY = (float)tileY + 0.5f;
               editor_setSpawnPosition(newX, newY);
             }

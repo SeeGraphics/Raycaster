@@ -8,6 +8,8 @@
 #include "types.h"
 #include <ctype.h>
 #include <math.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +33,45 @@ static const LeverFacingDef g_leverFacingDefs[] = {
 };
 static const int g_leverFacingDefCount =
     (int)(sizeof(g_leverFacingDefs) / sizeof(g_leverFacingDefs[0]));
+
+typedef struct
+{
+  int tileX;
+  int tileY;
+  int faceX;
+  int faceY;
+  float scale;
+  u32 *pixels;
+  float coverageX;
+  float coverageY;
+} WallTextInstance;
+
+static WallTextInstance *g_wallTexts = NULL;
+static int g_wallTextCount = 0;
+static int g_wallTextCapacity = 0;
+
+static float walltext_compute_final_height(int srcW, int srcH, int renderWidth,
+                                           int renderHeight, float maxScale,
+                                           float heightBias)
+{
+  if (srcW <= 0 || srcH <= 0)
+    return 0.0f;
+
+  float scaleX = ((float)renderWidth * maxScale) / (float)srcW;
+  float scaleY = ((float)renderHeight * maxScale) / (float)srcH;
+  float scale = (scaleX < scaleY) ? scaleX : scaleY;
+  if (scale <= 0.0f)
+    return 0.0f;
+
+  scale *= heightBias;
+  float maxScaleX = (float)renderWidth / (float)srcW;
+  float maxScaleY = (float)renderHeight / (float)srcH;
+  float maxScaleClamp = (maxScaleX < maxScaleY) ? maxScaleX : maxScaleY;
+  if (scale > maxScaleClamp)
+    scale = maxScaleClamp;
+
+  return (float)srcH * scale;
+}
 
 typedef struct
 {
@@ -103,6 +144,274 @@ static int decal_definition_index(const char *jsonName)
   return -1;
 }
 
+static int clamp_int(int value, int minValue, int maxValue)
+{
+  if (value < minValue)
+    return minValue;
+  if (value > maxValue)
+    return maxValue;
+  return value;
+}
+
+static void walltext_clear(void)
+{
+  for (int i = 0; i < g_wallTextCount; ++i)
+  {
+    free(g_wallTexts[i].pixels);
+    g_wallTexts[i].pixels = NULL;
+  }
+  g_wallTextCount = 0;
+}
+
+static void walltext_ensureCapacity(int required)
+{
+  if (required <= g_wallTextCapacity)
+    return;
+  int newCap = g_wallTextCapacity ? g_wallTextCapacity * 2 : 8;
+  while (newCap < required)
+    newCap *= 2;
+  WallTextInstance *newData =
+      (WallTextInstance *)realloc(g_wallTexts, newCap * sizeof(WallTextInstance));
+  if (!newData)
+    return;
+  g_wallTexts = newData;
+  g_wallTextCapacity = newCap;
+}
+
+static u32 *walltext_render_texture(const char *text, int fontSize,
+                                    SDL_Color color, float *outCoverageX,
+                                    float *outCoverageY)
+{
+  if (!text || text[0] == '\0')
+    return NULL;
+
+  if (outCoverageX)
+    *outCoverageX = 1.0f;
+  if (outCoverageY)
+    *outCoverageY = 1.0f;
+
+  const float maxScaleFrac = 0.92f;
+  const float heightBias = 1.08f;
+  const int upscale = 4;
+  const int renderWidth = TEXT_WIDTH * upscale;
+  const int renderHeight = TEXT_HEIGHT * upscale;
+
+  TTF_Font *font = TTF_OpenFont("assets/font/Doom.ttf", fontSize);
+  if (!font)
+  {
+    fprintf(stderr, "\033[31m[ERROR] Failed to load wall text font: %s\033[0m\n",
+            TTF_GetError());
+    return NULL;
+  }
+
+  SDL_Surface *baseSurface = TTF_RenderUTF8_Blended(font, text, color);
+  if (!baseSurface)
+  {
+    fprintf(stderr, "\033[31m[ERROR] Failed to render wall text '%s': %s\033[0m\n",
+            text, TTF_GetError());
+    TTF_CloseFont(font);
+    return NULL;
+  }
+
+  SDL_Surface *surface = baseSurface;
+  float bestHeight = walltext_compute_final_height(surface->w, surface->h,
+                                                   renderWidth, renderHeight,
+                                                   maxScaleFrac, heightBias);
+
+  if (strchr(text, ' ') != NULL)
+  {
+    int wrapWidth = surface->w;
+    for (int attempt = 0; attempt < 6; ++attempt)
+    {
+      wrapWidth = (int)((float)wrapWidth * 0.85f);
+      if (wrapWidth < fontSize)
+        wrapWidth = fontSize;
+
+      SDL_Surface *wrapped =
+          TTF_RenderUTF8_Blended_Wrapped(font, text, color, wrapWidth);
+      if (!wrapped)
+        break;
+
+      float candidateHeight = walltext_compute_final_height(
+          wrapped->w, wrapped->h, renderWidth, renderHeight, maxScaleFrac,
+          heightBias);
+
+      if (candidateHeight > bestHeight)
+      {
+        if (surface != baseSurface)
+          SDL_FreeSurface(surface);
+        surface = wrapped;
+        bestHeight = candidateHeight;
+      }
+      else
+      {
+        SDL_FreeSurface(wrapped);
+      }
+
+      if (wrapWidth == fontSize)
+        break;
+    }
+  }
+
+  if (surface != baseSurface)
+    SDL_FreeSurface(baseSurface);
+
+  SDL_Surface *converted =
+      SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_ARGB8888, 0);
+  if (!converted)
+  {
+    fprintf(stderr, "\033[31m[ERROR] Failed to convert wall text surface: %s\033[0m\n",
+            SDL_GetError());
+    SDL_FreeSurface(surface);
+    TTF_CloseFont(font);
+    return NULL;
+  }
+
+  Uint32 *highBuffer =
+      (Uint32 *)calloc((size_t)renderWidth * (size_t)renderHeight, sizeof(Uint32));
+  if (!highBuffer)
+  {
+    SDL_FreeSurface(converted);
+    SDL_FreeSurface(surface);
+    TTF_CloseFont(font);
+    return NULL;
+  }
+
+  Uint32 *srcPixels = (Uint32 *)converted->pixels;
+  int srcPitch = converted->pitch / 4;
+  int srcW = converted->w;
+  int srcH = converted->h;
+  if (srcW <= 0 || srcH <= 0)
+  {
+    free(highBuffer);
+    SDL_FreeSurface(converted);
+    SDL_FreeSurface(surface);
+    TTF_CloseFont(font);
+    return NULL;
+  }
+
+  float scaleX = ((float)renderWidth * maxScaleFrac) / (float)srcW;
+  float scaleY = ((float)renderHeight * maxScaleFrac) / (float)srcH;
+  float scale = (scaleX < scaleY) ? scaleX : scaleY;
+  if (scale <= 0.0f)
+    scale = ((float)renderHeight) / (float)srcH;
+
+  scale *= heightBias;
+  float maxScaleX = (float)renderWidth / (float)srcW;
+  float maxScaleY = (float)renderHeight / (float)srcH;
+  float maxScaleClamp = (maxScaleX < maxScaleY) ? maxScaleX : maxScaleY;
+  if (scale > maxScaleClamp)
+    scale = maxScaleClamp;
+
+  int destWidth = (int)roundf((float)srcW * scale);
+  int destHeight = (int)roundf((float)srcH * scale);
+  if (destWidth < 1)
+    destWidth = 1;
+  if (destHeight < 1)
+    destHeight = 1;
+  if (destWidth > renderWidth)
+    destWidth = renderWidth;
+  if (destHeight > renderHeight)
+    destHeight = renderHeight;
+
+  int offsetX = (renderWidth - destWidth) / 2;
+  int offsetY = (renderHeight - destHeight) / 2;
+
+  for (int y = 0; y < destHeight; ++y)
+  {
+    int srcY = (srcH > 0) ? (y * srcH) / destHeight : 0;
+    if (srcY >= srcH)
+      srcY = srcH - 1;
+    for (int x = 0; x < destWidth; ++x)
+    {
+      int srcX = (srcW > 0) ? (x * srcW) / destWidth : 0;
+      if (srcX >= srcW)
+        srcX = srcW - 1;
+      Uint32 srcPixel = srcPixels[srcY * srcPitch + srcX];
+      Uint8 r, g, b, a;
+      SDL_GetRGBA(srcPixel, converted->format, &r, &g, &b, &a);
+      if (a == 0)
+        continue;
+      highBuffer[(size_t)(y + offsetY) * (size_t)renderWidth +
+                 (size_t)(x + offsetX)] =
+          ((Uint32)a << 24) | ((Uint32)r << 16) | ((Uint32)g << 8) | (Uint32)b;
+    }
+  }
+
+  u32 *buffer =
+      (u32 *)calloc((size_t)TEXT_WIDTH * (size_t)TEXT_HEIGHT, sizeof(u32));
+  if (!buffer)
+  {
+    free(highBuffer);
+    SDL_FreeSurface(converted);
+    SDL_FreeSurface(surface);
+    TTF_CloseFont(font);
+    return NULL;
+  }
+
+  for (int y = 0; y < TEXT_HEIGHT; ++y)
+  {
+    int srcY0 = y * upscale;
+    int srcY1 = srcY0 + upscale;
+    for (int x = 0; x < TEXT_WIDTH; ++x)
+    {
+      int srcX0 = x * upscale;
+      int srcX1 = srcX0 + upscale;
+
+      unsigned int sumA = 0;
+      unsigned int sumR = 0;
+      unsigned int sumG = 0;
+      unsigned int sumB = 0;
+
+      for (int sy = srcY0; sy < srcY1; ++sy)
+      {
+        for (int sx = srcX0; sx < srcX1; ++sx)
+        {
+          Uint32 pix =
+              highBuffer[(size_t)sy * (size_t)renderWidth + (size_t)sx];
+          Uint8 a = (Uint8)((pix >> 24) & 0xFFu);
+          if (a == 0)
+            continue;
+          Uint8 r = (Uint8)((pix >> 16) & 0xFFu);
+          Uint8 g = (Uint8)((pix >> 8) & 0xFFu);
+          Uint8 b = (Uint8)(pix & 0xFFu);
+          sumA += a;
+          sumR += (unsigned int)r * (unsigned int)a;
+          sumG += (unsigned int)g * (unsigned int)a;
+          sumB += (unsigned int)b * (unsigned int)a;
+        }
+      }
+
+      unsigned int sampleCount = (unsigned int)(upscale * upscale);
+      Uint8 outA = (Uint8)(sumA / sampleCount);
+      Uint8 outR = 0;
+      Uint8 outG = 0;
+      Uint8 outB = 0;
+      if (sumA > 0)
+      {
+        outR = (Uint8)(sumR / sumA);
+        outG = (Uint8)(sumG / sumA);
+        outB = (Uint8)(sumB / sumA);
+      }
+
+      buffer[(size_t)y * (size_t)TEXT_WIDTH + (size_t)x] =
+          ((Uint32)outA << 24) | ((Uint32)outR << 16) |
+          ((Uint32)outG << 8) | (Uint32)outB;
+    }
+  }
+
+  if (outCoverageX)
+    *outCoverageX = (float)destWidth / (float)renderWidth;
+  if (outCoverageY)
+    *outCoverageY = (float)destHeight / (float)renderHeight;
+
+  free(highBuffer);
+  SDL_FreeSurface(converted);
+  SDL_FreeSurface(surface);
+  TTF_CloseFont(font);
+
+  return buffer;
+}
 static void lever_ensureCapacity(int required)
 {
   if (required <= g_leverCapacity)
@@ -281,6 +590,7 @@ static void entities_populateDefaults(void)
   worldSpriteCount = 0;
   entities_resetSpawnToDefaults();
   lever_clear();
+  walltext_clear();
 
   static const struct
   {
@@ -314,7 +624,7 @@ static void entities_populateDefaults(void)
     i32 health;
     const char *animation;
   } enemies[] = {
-      {15.5f, 13.5f, 1.35f, 200, "DEMON_WALK"},
+      {15.5f, 13.5f, 1.35f, 100, "DEMON_WALK"},
   };
 
   for (i32 i = 0; i < (i32)(sizeof(decorations) / sizeof(decorations[0])); ++i)
@@ -840,6 +1150,118 @@ static int parse_decal_object(const char *start, const char *end)
   return 0;
 }
 
+static int parse_wall_text_object(const char *start, const char *end)
+{
+  double valueX = 0.0;
+  double valueY = 0.0;
+  double scaleValue = 0.6;
+  double fontSizeValue = 28.0;
+  double colorR = 255.0;
+  double colorG = 255.0;
+  double colorB = 255.0;
+  double colorA = 255.0;
+  char facingName[16];
+  char textValue[256];
+
+  if (json_get_double(start, end, "x", &valueX) != 1 ||
+      json_get_double(start, end, "y", &valueY) != 1)
+  {
+    fprintf(stderr,
+            "\033[31m[ERROR] Wall text missing numeric 'x'/'y'\033[0m\n");
+    return -1;
+  }
+
+  if (json_get_string(start, end, "text", textValue, sizeof(textValue)) != 1)
+  {
+    fprintf(stderr,
+            "\033[31m[ERROR] Wall text missing 'text' string\033[0m\n");
+    return -1;
+  }
+
+  if (json_get_string(start, end, "facing", facingName, sizeof(facingName)) != 1)
+  {
+    snprintf(facingName, sizeof(facingName), "EAST");
+  }
+
+  json_get_double(start, end, "scale", &scaleValue);
+  json_get_double(start, end, "font_size", &fontSizeValue);
+  json_get_double(start, end, "color_r", &colorR);
+  json_get_double(start, end, "color_g", &colorG);
+  json_get_double(start, end, "color_b", &colorB);
+  json_get_double(start, end, "color_a", &colorA);
+
+  if (scaleValue < 0.1)
+    scaleValue = 0.1;
+  if (scaleValue > 1.0)
+    scaleValue = 1.0;
+  int fontSize = (int)(fontSizeValue + 0.5);
+  if (fontSize < 8)
+    fontSize = 8;
+  if (fontSize > 96)
+    fontSize = 96;
+
+  int faceX = 0;
+  int faceY = 0;
+  int facingIndex = lever_parseFacing(facingName, &faceX, &faceY);
+  if (facingIndex < 0)
+  {
+    fprintf(stderr, "\033[31m[ERROR] Unknown wall text facing '%s'\033[0m\n",
+            facingName);
+    return -1;
+  }
+
+  int tileX = (int)floor(valueX);
+  int tileY = (int)floor(valueY);
+  if (tileX < 0 || tileX >= MAP_WIDTH || tileY < 0 || tileY >= MAP_HEIGHT)
+  {
+    fprintf(stderr,
+            "\033[31m[ERROR] Wall text coordinates (%.2f, %.2f) out of bounds\033[0m\n",
+            valueX, valueY);
+    return -1;
+  }
+
+  if (worldMap[tileX][tileY] <= 0)
+  {
+    fprintf(stderr,
+            "\033[31m[ERROR] Wall text requires solid wall at (%d, %d)\033[0m\n",
+            tileX, tileY);
+    return -1;
+  }
+
+  SDL_Color color = {
+      (Uint8)clamp_int((int)colorR, 0, 255),
+      (Uint8)clamp_int((int)colorG, 0, 255),
+      (Uint8)clamp_int((int)colorB, 0, 255),
+      (Uint8)clamp_int((int)colorA, 0, 255),
+  };
+
+  float coverageX = 1.0f;
+  float coverageY = 1.0f;
+  u32 *pixels = walltext_render_texture(textValue, fontSize, color, &coverageX,
+                                        &coverageY);
+  if (!pixels)
+    return -1;
+
+  walltext_ensureCapacity(g_wallTextCount + 1);
+  if (!g_wallTexts)
+  {
+    free(pixels);
+    return -1;
+  }
+
+  WallTextInstance instance;
+  instance.tileX = tileX;
+  instance.tileY = tileY;
+  instance.faceX = faceX;
+  instance.faceY = faceY;
+  instance.scale = (float)scaleValue;
+  instance.pixels = pixels;
+  instance.coverageX = coverageX;
+  instance.coverageY = coverageY;
+  g_wallTexts[g_wallTextCount++] = instance;
+  return 0;
+}
+
 void entities_tryInteract(Engine *engine)
 {
   if (!engine)
@@ -909,6 +1331,38 @@ int entities_getLeverTextureAtFace(int tileX, int tileY, int faceX, int faceY,
   if (outActivated)
     *outActivated = lever->activated;
   return lever->activated ? lever->onTextureId : lever->offTextureId;
+}
+
+int entities_getWallTextAt(int tileX, int tileY, int faceX, int faceY,
+                           const u32 **outPixels, float *outScale,
+                           float *outCoverageX, float *outCoverageY)
+{
+  if (tileX < 0 || tileY < 0 || tileX >= MAP_WIDTH || tileY >= MAP_HEIGHT)
+    return 0;
+
+  for (int i = 0; i < g_wallTextCount; ++i)
+  {
+    const WallTextInstance *text = &g_wallTexts[i];
+    if (text->tileX != tileX || text->tileY != tileY)
+      continue;
+    if ((text->faceX != 0 || text->faceY != 0) &&
+        (text->faceX != faceX || text->faceY != faceY))
+      continue;
+    if (!text->pixels)
+      continue;
+
+    if (outPixels)
+      *outPixels = text->pixels;
+    if (outScale)
+      *outScale = text->scale;
+    if (outCoverageX)
+      *outCoverageX = text->coverageX;
+    if (outCoverageY)
+      *outCoverageY = text->coverageY;
+    return 1;
+  }
+
+  return 0;
 }
 
 static int parse_entity_array(const char *json, const char *sectionName,
@@ -994,6 +1448,7 @@ static int entities_loadFromJSONFile(const char *path)
   worldSpriteCount = 0;
   int result = 0;
   lever_clear();
+  walltext_clear();
 
   if (parse_entity_array(buffer, "decorations", parse_decoration_object) != 0)
     result = -1;
@@ -1008,6 +1463,10 @@ static int entities_loadFromJSONFile(const char *path)
 
   if (result == 0 &&
       parse_entity_array(buffer, "decals", parse_decal_object) != 0)
+    result = -1;
+
+  if (result == 0 &&
+      parse_entity_array(buffer, "wall_texts", parse_wall_text_object) != 0)
     result = -1;
 
   free(buffer);
@@ -1066,5 +1525,6 @@ void entities_reset(void)
   worldInitialized = 0;
   worldSpriteCount = 0;
   lever_clear();
+  walltext_clear();
   entities_resetSpawnToDefaults();
 }

@@ -3,10 +3,11 @@
 
 #include "SDL_mixer.h"
 
-#define MUSIC_VOL 5
-#define SFX_VOL 30
+#define MUSIC_VOL 2
+#define SFX_VOL 50
 
-typedef struct {
+typedef struct
+{
   Mix_Chunk *ShotgunShot;
   Mix_Chunk *ShotgunReload;
   Mix_Chunk *RocketShot;

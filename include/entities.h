@@ -18,5 +18,6 @@ int entities_getLeverTextureAtFace(int tileX, int tileY, int faceX, int faceY,
 int entities_getWallTextAt(int tileX, int tileY, int faceX, int faceY,
                            const u32 **outPixels, float *outScale,
                            float *outCoverageX, float *outCoverageY);
+void entities_setEntitiesFilePath(const char *path);
 
 #endif

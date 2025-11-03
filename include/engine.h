@@ -8,6 +8,7 @@
 #include "sound.h"
 #include "sprites.h"
 #include "texture.h"
+#include <stdbool.h>
 
 typedef enum { GAME, DEBUG, TOTAL_MODES } GameMode;
 
@@ -22,6 +23,7 @@ typedef struct Engine {
   SoundManager sound;
   Sprite *sprites;
   Font font;
+  int currentLevelIndex;
 
   // Time tracking
   double time, oldTime;
@@ -32,6 +34,7 @@ typedef struct Engine {
 
 int engine_init(Engine *engine);
 void engine_reloadLevel(Engine *engine);
+int engine_loadLevel(Engine *engine, int levelIndex, bool resetPlayerState);
 void engine_updateTime(Engine *engine);
 void engine_cleanup(Engine *engine, int exitCode);
 

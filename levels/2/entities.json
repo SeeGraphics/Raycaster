@@ -1,11 +1,18 @@
 {
   "settings": {
     "floor_texture": 9,
-    "ceiling_texture": 6
+    "ceiling_texture": 6,
+    "player_spawn_x": 1.500,
+    "player_spawn_y": 1.500,
+    "player_spawn_dir": 358.100
   },
   "decorations": [
   ],
   "pickups": [
+  ],
+  "decals": [
+  ],
+  "wall_texts": [
   ],
   "enemies": [
   ]

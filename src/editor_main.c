@@ -4,6 +4,7 @@
 #include "raycast.h"
 #include "texture.h"
 #include "sprites.h"
+#include "types.h"
 #define STBI_rgb_alpha 4
 #include "third_party/stb_image.h"
 #include <SDL2/SDL.h>
@@ -186,6 +187,7 @@ typedef struct EditorDecal
   int facingIndex;
   int tileX;
   int tileY;
+  int targetLevel;
 } EditorDecal;
 
 #define WALL_TEXT_MAX_CHARS 128
@@ -980,6 +982,7 @@ static EditorDecal *editor_addDecal(float x, float y, int typeIndex)
   decal.doorX = tileX;
   decal.doorY = tileY;
   decal.activated = 0;
+  decal.targetLevel = -1;
   int defaultFacing = editor_guessDecalFacing(tileX, tileY);
   editor_applyDecalFacing(&decal, defaultFacing, false);
 
@@ -1754,6 +1757,15 @@ static int editor_loadEntities(void)
       else if (doorTileY >= MAP_HEIGHT)
         doorTileY = MAP_HEIGHT - 1;
 
+      int targetLevelIndex = -1;
+      double targetLevelValue = 0.0;
+      if (editor_jsonGetDouble(objStart, objEnd, "target_level", &targetLevelValue) == 1)
+      {
+        int levelNumber = (int)(targetLevelValue + (targetLevelValue >= 0.0 ? 0.5 : -0.5));
+        if (levelNumber >= 1 && levelNumber <= LEVEL_COUNT)
+          targetLevelIndex = levelNumber - 1;
+      }
+
       EditorDecal decal;
       memset(&decal, 0, sizeof(decal));
       decal.x = (float)valueX;
@@ -1762,6 +1774,7 @@ static int editor_loadEntities(void)
       decal.doorX = doorTileX;
       decal.doorY = doorTileY;
       decal.activated = 0;
+      decal.targetLevel = targetLevelIndex;
       editor_centerDecal(&decal);
       if (facingIndex < 0)
         facingIndex = editor_guessDecalFacing(decal.tileX, decal.tileY);
@@ -2086,7 +2099,11 @@ static void editor_saveEntities(void)
     fprintf(file, "      \"y\": %.3f,\n", decal->y);
     fprintf(file, "      \"facing\": \"%s\",\n", facingName);
     fprintf(file, "      \"door_x\": %d,\n", decal->doorX);
-    fprintf(file, "      \"door_y\": %d\n", decal->doorY);
+    fprintf(file, "      \"door_y\": %d", decal->doorY);
+    if (decal->targetLevel >= 0 && decal->targetLevel < LEVEL_COUNT)
+      fprintf(file, ",\n      \"target_level\": %d\n", decal->targetLevel + 1);
+    else
+      fprintf(file, "\n");
     fprintf(file, "    }%s\n", (i + 1 < g_decalCount) ? "," : "");
   }
 
@@ -3207,10 +3224,14 @@ int main(int argc, char **argv)
                  g_decals[i].facingIndex < g_decalFacingCount)
                     ? g_decalFacingLabels[g_decals[i].facingIndex]
                     : "?";
+            char targetSuffix[32] = "";
+            if (g_decals[i].targetLevel >= 0 && g_decals[i].targetLevel < LEVEL_COUNT)
+              snprintf(targetSuffix, sizeof(targetSuffix), " -> Level %d",
+                       g_decals[i].targetLevel + 1);
             char label[128];
-            snprintf(label, sizeof(label), "%s [%s] (door %d,%d)##decal_%d",
+            snprintf(label, sizeof(label), "%s [%s] (door %d,%d)%s##decal_%d",
                      rowType->label, facingText, g_decals[i].doorX,
-                     g_decals[i].doorY, i);
+                     g_decals[i].doorY, targetSuffix, i);
             bool selected = (i == g_selectedDecalIndex);
             if (igSelectable_Bool(label, selected, 0, (ImVec2){0.0f, 0.0f}))
               g_selectedDecalIndex = i;
@@ -3288,6 +3309,39 @@ int main(int argc, char **argv)
             {
               g_pendingDoorAssignmentIndex = g_selectedDecalIndex;
               editor_setStatus("Click a wall tile to assign lever target.");
+            }
+
+            char levelLabel[32];
+            if (decal->targetLevel >= 0 && decal->targetLevel < LEVEL_COUNT)
+              snprintf(levelLabel, sizeof(levelLabel), "Level %d",
+                       decal->targetLevel + 1);
+            else
+              snprintf(levelLabel, sizeof(levelLabel), "None");
+            if (igBeginCombo("Target Level##decal", levelLabel, 0))
+            {
+              bool noneSelected = (decal->targetLevel < 0);
+              if (igSelectable_Bool("None", noneSelected, 0, (ImVec2){0.0f, 0.0f}))
+              {
+                decal->targetLevel = -1;
+                g_entitiesDirty = true;
+              }
+              if (noneSelected)
+                igSetItemDefaultFocus();
+              for (int i = 0; i < LEVEL_COUNT; ++i)
+              {
+                char optionLabel[32];
+                snprintf(optionLabel, sizeof(optionLabel), "Level %d", i + 1);
+                bool selected = (decal->targetLevel == i);
+                if (igSelectable_Bool(optionLabel, selected, 0,
+                                      (ImVec2){0.0f, 0.0f}))
+                {
+                  decal->targetLevel = i;
+                  g_entitiesDirty = true;
+                }
+                if (selected)
+                  igSetItemDefaultFocus();
+              }
+              igEndCombo();
             }
 
             if (g_pendingDoorAssignmentIndex == g_selectedDecalIndex)

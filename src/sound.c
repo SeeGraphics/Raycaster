@@ -3,9 +3,9 @@
 #include <string.h>
 
 static const int VOLUME_GLOBAL = SFX_VOL;
-static const int VOLUME_GUNS = 40;
-static const int VOLUME_PICKUPS = 200;
-static const int VOLUME_DEMON_DEATH = 90;
+static const int VOLUME_GUNS = 24;
+static const int VOLUME_PICKUPS = 48;
+static const int VOLUME_DEMON_DEATH = 80;
 
 SoundManager createSound()
 {

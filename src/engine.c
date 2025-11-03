@@ -3,17 +3,78 @@
 #include "map.h"
 #include "sound.h"
 #include "weapons.h"
+#include "types.h"
 #include <stdio.h>
 
-static const char *kDefaultLevelMapPath = "levels/1/map.csv";
+static const char *kLevelMapPaths[LEVEL_COUNT] = {
+    "levels/1/map.csv",
+    "levels/2/map.csv",
+    "levels/3/map.csv",
+    "levels/4/map.csv",
+    "levels/5/map.csv",
+};
+
+static const char *kLevelEntitiesPaths[LEVEL_COUNT] = {
+    "levels/1/entities.json",
+    "levels/2/entities.json",
+    "levels/3/entities.json",
+    "levels/4/entities.json",
+    "levels/5/entities.json",
+};
+
+int engine_loadLevel(Engine *engine, int levelIndex, bool resetPlayerState)
+{
+  if (!engine)
+    return -1;
+  if (levelIndex < 0 || levelIndex >= LEVEL_COUNT)
+  {
+    fprintf(stderr, "\033[31m[ERROR] Invalid level index %d\033[0m\n",
+            levelIndex);
+    return -1;
+  }
+
+  const char *mapPath = kLevelMapPaths[levelIndex];
+  const char *entitiesPath = kLevelEntitiesPaths[levelIndex];
+
+  if (map_loadFromCSV(mapPath) != 0)
+  {
+    fprintf(stderr,
+            "\033[33m[WARN] Failed to load map '%s'; using built-in layout\033[0m\n",
+            mapPath);
+    map_resetToDefault();
+  }
+
+  entities_setEntitiesFilePath(entitiesPath);
+  entities_reset();
+  engine->sprites = entities_createWorldSprites();
+
+  if (resetPlayerState)
+  {
+    weapons_resetProperties();
+    player_respawn(&engine->player);
+  }
+  else
+  {
+    player_applySpawn(&engine->player);
+    engine->player.velocityForward = 0.0;
+    engine->player.velocityStrafe = 0.0;
+    engine->player.velX = 0.0;
+    engine->player.velY = 0.0;
+    engine->player.damageFlashTimer = 0.0;
+    engine->player.bobTime = 0.0;
+    engine->player.mouseHeld = 0;
+    engine->player.shooting = 0;
+  }
+
+  engine->currentLevelIndex = levelIndex;
+  return 0;
+}
 
 int engine_init(Engine *engine) {
 
   engine->mode = GAME;
   engine->game = createGame();
-
-  if (map_loadFromCSV(kDefaultLevelMapPath) != 0)
-    fprintf(stderr, "\033[33m[WARN] Using built-in map layout\033[0m\n");
+  engine->currentLevelIndex = 0;
 
   // SDL + TTF
   if (SDL_initialize(&engine->game))
@@ -28,10 +89,7 @@ int engine_init(Engine *engine) {
   engine->textures = createTextures();
   engine->sound = createSound();
   loadAllAnimations();
-  engine->sprites = entities_createWorldSprites();
   engine->font = font_init();
-  weapons_resetProperties();
-  player_respawn(&engine->player);
 
   // Initialize Time variables
   engine->time = SDL_GetTicks();
@@ -45,6 +103,9 @@ int engine_init(Engine *engine) {
   textures_load(&engine->textures);
   loadSounds(&engine->sound);
   loadMusic(&engine->sound);
+
+  if (engine_loadLevel(engine, 0, true) != 0)
+    fprintf(stderr, "\033[33m[WARN] Failed to load initial level; using defaults\033[0m\n");
 
   // play background track (currently Soundtrack_intense)
   playTrackIntense(&engine->sound);
@@ -64,14 +125,7 @@ void engine_reloadLevel(Engine *engine)
 {
   if (!engine)
     return;
-
-  if (map_loadFromCSV(kDefaultLevelMapPath) != 0)
-    fprintf(stderr, "\033[33m[WARN] Using built-in map layout\033[0m\n");
-
-  entities_reset();
-  engine->sprites = entities_createWorldSprites();
-  weapons_resetProperties();
-  player_respawn(&engine->player);
+  engine_loadLevel(engine, engine->currentLevelIndex, true);
 }
 
 void engine_updateTime(Engine *engine) {

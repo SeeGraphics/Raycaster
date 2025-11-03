@@ -92,6 +92,7 @@ typedef struct
   int normalY;
   int openTileValue;
   int originalTileValue;
+  int targetLevelIndex;
 } LeverInstance;
 
 static LeverInstance *g_levers = NULL;
@@ -99,6 +100,7 @@ static int g_leverCount = 0;
 static int g_leverCapacity = 0;
 static int g_leverDoorMap[MAP_WIDTH][MAP_HEIGHT];
 static int g_leverTileMap[MAP_WIDTH][MAP_HEIGHT];
+static char g_entitiesFilePath[256] = "levels/1/entities.json";
 
 static double g_playerSpawnX = POS_X;
 static double g_playerSpawnY = POS_Y;
@@ -117,6 +119,14 @@ static void entities_resetSpawnToDefaults(void)
   g_playerSpawnX = POS_X;
   g_playerSpawnY = POS_Y;
   g_playerSpawnDirDegrees = entities_calculateDirDegrees(DIR_X, DIR_Y);
+}
+
+void entities_setEntitiesFilePath(const char *path)
+{
+  if (!path)
+    return;
+  strncpy(g_entitiesFilePath, path, sizeof(g_entitiesFilePath) - 1);
+  g_entitiesFilePath[sizeof(g_entitiesFilePath) - 1] = '\0';
 }
 
 static Animation *animation_from_name(const char *name);
@@ -1135,9 +1145,13 @@ static int parse_decal_object(const char *start, const char *end)
 
   double openTileValue = 0.0;
   int hasOpenTile = json_get_double(start, end, "open_tile", &openTileValue) == 1;
+  double targetLevelValue = 0.0;
+  int hasTargetLevel =
+      json_get_double(start, end, "target_level", &targetLevelValue) == 1;
 
   LeverInstance lever;
   memset(&lever, 0, sizeof(lever));
+  lever.targetLevelIndex = -1;
   lever.doorX = doorTileX;
   lever.doorY = doorTileY;
   lever.tileX = tileX;
@@ -1164,6 +1178,16 @@ static int parse_decal_object(const char *start, const char *end)
       lever.originalTileValue = 0;
   }
   lever.openTileValue = hasOpenTile ? (int)openTileValue : 0;
+  if (hasTargetLevel)
+  {
+    int levelIndex = (int)(targetLevelValue + (targetLevelValue >= 0.0 ? 0.5 : -0.5));
+    if (levelIndex >= 1 && levelIndex <= LEVEL_COUNT)
+      lever.targetLevelIndex = levelIndex - 1;
+    else
+      fprintf(stderr,
+              "\033[33m[WARN] target_level %d out of bounds (1-%d); ignoring\033[0m\n",
+              levelIndex, LEVEL_COUNT);
+  }
 
   lever_alignPosition(&lever);
 
@@ -1355,13 +1379,19 @@ void entities_tryInteract(Engine *engine)
           lever->activated ? lever->openTileValue : lever->originalTileValue;
       int previousValue = worldMap[lever->doorX][lever->doorY];
       worldMap[lever->doorX][lever->doorY] = newValue;
-      if (previousValue != newValue)
+      if (previousValue != newValue && lever->targetLevelIndex < 0)
       {
         if (lever->activated)
           playDoorOpen(&engine->sound);
         else
           playDoorClose(&engine->sound);
       }
+    }
+
+    if (lever->activated && lever->targetLevelIndex >= 0)
+    {
+      if (engine_loadLevel(engine, lever->targetLevelIndex, false) == 0)
+        return;
     }
   }
 }
@@ -1544,7 +1574,8 @@ void entities_handlePickups(Engine *engine)
 
     double dx = sprite->x - player->posX;
     double dy = sprite->y - player->posY;
-    double radius = 0.55 * (double)sprite->scale;
+    const double pickupRadiusBase = 0.55 * 1.25;
+    double radius = pickupRadiusBase * (double)sprite->scale;
     if (dx * dx + dy * dy > radius * radius)
       continue;
 
@@ -1606,10 +1637,11 @@ Sprite *entities_createWorldSprites(void)
   worldSpriteCount = 0;
   entities_resetSpawnToDefaults();
 
-  if (entities_loadFromJSONFile("levels/1/entities.json") != 0)
+  if (entities_loadFromJSONFile(g_entitiesFilePath) != 0)
   {
     fprintf(stderr,
-            "\033[33m[WARN] Falling back to built-in entities layout\033[0m\n");
+            "\033[33m[WARN] Falling back to built-in entities layout for '%s'\033[0m\n",
+            g_entitiesFilePath);
     entities_populateDefaults();
   }
 

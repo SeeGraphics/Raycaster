@@ -101,6 +101,15 @@ void loadAllAnimations() { // 0 playing, 0 looping
   animations.demon_walk =
       loadAnimation("assets/textures/entities/demon/walk", FRAMES_DEMON_WALK,
                     FRAMETIME_DEMON_WALK, 1, 1);
+  animations.demon_attack =
+      loadAnimation("assets/textures/entities/demon/attack",
+                    FRAMES_DEMON_ATTACK, FRAMETIME_DEMON_ATTACK, 0, 0);
+  animations.demon_hit =
+      loadAnimation("assets/textures/entities/demon/hit", FRAMES_DEMON_HIT,
+                    FRAMETIME_DEMON_HIT, 0, 0);
+  animations.demon_death =
+      loadAnimation("assets/textures/entities/demon/death", FRAMES_DEMON_DEATH,
+                    FRAMETIME_DEMON_DEATH, 0, 0);
 }
 
 void updateAnimation(Animation *animation, Player *player, double deltaTime) {
@@ -219,4 +228,7 @@ void freeAllAnimations() {
   freeAnimation(&animations.minigun_shoot);
   freeAnimation(&animations.minigun_idle);
   freeAnimation(&animations.demon_walk);
+  freeAnimation(&animations.demon_attack);
+  freeAnimation(&animations.demon_hit);
+  freeAnimation(&animations.demon_death);
 }

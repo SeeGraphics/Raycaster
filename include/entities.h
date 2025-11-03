@@ -12,6 +12,7 @@ i32 entities_getSpriteCount(void);
 void entities_reset(void);
 void entities_getPlayerSpawn(double *outX, double *outY, double *outDirDegrees);
 void entities_tryInteract(struct Engine *engine);
+void entities_handlePickups(struct Engine *engine);
 int entities_getLeverTextureAtFace(int tileX, int tileY, int faceX, int faceY,
                                    int *outActivated);
 int entities_getWallTextAt(int tileX, int tileY, int faceX, int faceY,

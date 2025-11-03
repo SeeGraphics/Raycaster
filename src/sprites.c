@@ -150,6 +150,12 @@ void perform_spritecasting(Engine *engine)
         -spriteHeight / 2 + RENDER_HEIGHT / 2 + (i32)engine->player.pitch;
     i32 spriteBottom =
         spriteHeight / 2 + RENDER_HEIGHT / 2 + (i32)engine->player.pitch;
+    if (sprite->kind == SPRITE_PICKUP)
+    {
+      i32 offset = (spriteHeight * 3) / 2;
+      spriteTop += offset;
+      spriteBottom += offset;
+    }
     i32 spriteLeft = -spriteWidth / 2 + spriteScreenX;
     i32 spriteRight = spriteWidth / 2 + spriteScreenX;
 

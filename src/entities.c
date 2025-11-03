@@ -1,10 +1,12 @@
 #include "animation.h"
 #include "entities.h"
+#include "enemies.h"
 #include "player.h"
 #include "raycast.h"
 #include "texture.h"
 #include "map.h"
 #include "engine.h"
+#include "weapons.h"
 #include "types.h"
 #include <ctype.h>
 #include <math.h>
@@ -614,8 +616,11 @@ static void entities_populateDefaults(void)
     f32 x, y, scale;
     i32 textureId;
   } pickups[] = {
-      {12.5f, 7.5f, 0.9f, TEX_MONEY},
-      {11.5f, 15.5f, 0.9f, TEX_MONEY},
+      {12.5f, 7.5f, 0.20f, TEX_MONEY},
+      {11.5f, 15.5f, 0.20f, TEX_MONEY},
+      {13.5f, 11.5f, 0.25f, TEX_AMMO},
+      {10.5f, 11.5f, 0.25f, TEX_HEALTH},
+      {12.5f, 12.5f, 0.25f, TEX_KEY},
   };
 
   static const struct
@@ -654,7 +659,9 @@ static void entities_populateDefaults(void)
                     anim ? spriteAppearanceFromAnimation(anim)
                          : spriteAppearanceFromTexture(TEX_GREENLIGHT),
                     enemies[i].scale, enemies[i].health);
-    entities_pushSprite(sprite);
+    Sprite *slot = entities_pushSprite(sprite);
+    if (slot)
+      enemies_registerSprite(slot, enemies[i].animation);
   }
 }
 
@@ -831,6 +838,21 @@ static int texture_from_name(const char *name, i32 *out)
     *out = TEX_MONEY;
     return 1;
   }
+  if (strcmp(name, "AMMUNITION") == 0 || strcmp(name, "AMMO") == 0)
+  {
+    *out = TEX_AMMO;
+    return 1;
+  }
+  if (strcmp(name, "HEALTH") == 0 || strcmp(name, "MEDKIT") == 0)
+  {
+    *out = TEX_HEALTH;
+    return 1;
+  }
+  if (strcmp(name, "KEY") == 0)
+  {
+    *out = TEX_KEY;
+    return 1;
+  }
 
   fprintf(stderr, "\033[31m[ERROR] Unknown texture name '%s' in entities.json\033[0m\n",
           name);
@@ -920,7 +942,7 @@ static int parse_pickup_object(const char *start, const char *end)
     return -1;
   }
   if (scaleResult == 0)
-    scale = 0.9f;
+    scale = 0.25f;
 
   if (json_get_string(start, end, "texture", textureName, sizeof(textureName)) != 1)
   {
@@ -932,6 +954,24 @@ static int parse_pickup_object(const char *start, const char *end)
   i32 textureId = 0;
   if (!texture_from_name(textureName, &textureId))
     return -1;
+
+  if (scaleResult == 0)
+  {
+    switch (textureId)
+    {
+    case TEX_MONEY:
+      scale = 0.20f;
+      break;
+    case TEX_AMMO:
+    case TEX_HEALTH:
+    case TEX_KEY:
+      scale = 0.25f;
+      break;
+    default:
+      scale = 0.25f;
+      break;
+    }
+  }
 
   Sprite sprite = sprite_make(x, y, SPRITE_PICKUP,
                               spriteAppearanceFromTexture(textureId),
@@ -994,11 +1034,13 @@ static int parse_enemy_object(const char *start, const char *end)
   Sprite sprite =
       sprite_make(x, y, SPRITE_ENEMY, spriteAppearanceFromAnimation(animation),
                   (f32)scale, (i32)healthValue);
-  if (!entities_pushSprite(sprite))
+  Sprite *slot = entities_pushSprite(sprite);
+  if (!slot)
   {
     fprintf(stderr, "\033[31m[ERROR] Too many sprites, enemy skipped\033[0m\n");
     return -1;
   }
+  enemies_registerSprite(slot, animationName);
 
   return 0;
 }
@@ -1311,7 +1353,15 @@ void entities_tryInteract(Engine *engine)
 
       int newValue =
           lever->activated ? lever->openTileValue : lever->originalTileValue;
+      int previousValue = worldMap[lever->doorX][lever->doorY];
       worldMap[lever->doorX][lever->doorY] = newValue;
+      if (previousValue != newValue)
+      {
+        if (lever->activated)
+          playDoorOpen(&engine->sound);
+        else
+          playDoorClose(&engine->sound);
+      }
     }
   }
 }
@@ -1480,6 +1530,64 @@ static int entities_loadFromJSONFile(const char *path)
   return 0;
 }
 
+void entities_handlePickups(Engine *engine)
+{
+  if (!engine || !engine->sprites)
+    return;
+
+  Player *player = &engine->player;
+  for (int i = 0; i < NUM_SPRITES; ++i)
+  {
+    Sprite *sprite = &engine->sprites[i];
+    if (!sprite->active || sprite->kind != SPRITE_PICKUP)
+      continue;
+
+    double dx = sprite->x - player->posX;
+    double dy = sprite->y - player->posY;
+    double radius = 0.55 * (double)sprite->scale;
+    if (dx * dx + dy * dy > radius * radius)
+      continue;
+
+    int textureId = -1;
+    if (sprite->appearance.type == SPRITE_VISUAL_TEXTURE)
+      textureId = sprite->appearance.texture.textureId;
+
+    bool consumed = true;
+    switch (textureId)
+    {
+    case TEX_AMMO:
+    {
+      int gun = player->selectedGun;
+      if (gun >= 0 && gun < TOTAL_GUNS)
+      {
+        weaponProperties[gun].ammunition += 20;
+        printf("\033[32m[PICKUP] Ammunition replenished!\033[0m\n");
+      }
+      playPlayerAmmo(&engine->sound);
+      break;
+    }
+    case TEX_HEALTH:
+      player->health = HEALTH;
+      playPlayerHeal(&engine->sound);
+      printf("\033[32m[PICKUP] Health restored to maximum.\033[0m\n");
+      break;
+    case TEX_KEY:
+      playPlayerKey(&engine->sound);
+      printf("\033[36m[PICKUP] You found a key. Key logic coming soon!\033[0m\n");
+      break;
+    case TEX_MONEY:
+      printf("\033[32m[PICKUP] Collected treasure.\033[0m\n");
+      break;
+    default:
+      consumed = false;
+      break;
+    }
+
+    if (consumed)
+      sprite->active = 0;
+  }
+}
+
 void entities_getPlayerSpawn(double *outX, double *outY, double *outDirDegrees)
 {
   if (outX)
@@ -1526,5 +1634,6 @@ void entities_reset(void)
   worldSpriteCount = 0;
   lever_clear();
   walltext_clear();
+  enemies_clearControllers();
   entities_resetSpawnToDefaults();
 }

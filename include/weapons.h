@@ -15,5 +15,6 @@ typedef struct
 } WeaponProperties;
 
 extern WeaponProperties weaponProperties[TOTAL_GUNS];
+void weapons_resetProperties(void);
 
 #endif

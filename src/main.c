@@ -1,4 +1,5 @@
 #include "engine.h"
+#include "entities.h"
 #include "graphics.h"
 #include "input.h"
 #include "enemies.h"
@@ -21,6 +22,7 @@ int main()
   {
     engine_updateTime(&engine);
     handleInput(&engine, engine.deltaTime);
+    entities_handlePickups(&engine);
 
     enemies_update(&engine, engine.deltaTime);
     updateAllAnimations(&engine.player, engine.deltaTime);

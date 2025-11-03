@@ -39,6 +39,21 @@ typedef struct TileTexture
 static TileTexture *g_tileTextures = NULL;
 static int g_tileTextureCount = 0;
 
+static void editor_apply_colorkey(unsigned char *pixels, int width, int height)
+{
+  if (!pixels || width <= 0 || height <= 0)
+    return;
+  for (int y = 0; y < height; ++y)
+  {
+    for (int x = 0; x < width; ++x)
+    {
+      unsigned char *px = &pixels[(y * width + x) * 4];
+      if (px[0] == 0x99 && px[1] == 0xE5 && px[2] == 0x50)
+        px[3] = 0;
+    }
+  }
+}
+
 typedef enum EditorMode
 {
   EDIT_MODE_WALLS = 0,
@@ -122,7 +137,10 @@ static const int g_decorationTypeCount =
     (int)(sizeof(g_decorationTypes) / sizeof(g_decorationTypes[0]));
 
 static const PickupType g_pickupTypes[] = {
-    {"Money", "MONEY", "Money", TEX_MONEY, 0.9f},
+    {"Money", "MONEY", "Money", TEX_MONEY, 0.15f},
+    {"Ammunition", "AMMUNITION", "Ammunition", TEX_AMMO, 0.18f},
+    {"Health Pack", "HEALTH", "Health", TEX_HEALTH, 0.18f},
+    {"Key", "KEY", "Key", TEX_KEY, 0.18f},
 };
 static const int g_pickupTypeCount =
     (int)(sizeof(g_pickupTypes) / sizeof(g_pickupTypes[0]));
@@ -133,11 +151,11 @@ static const DecalType g_decalTypes[] = {
 static const int g_decalTypeCount =
     (int)(sizeof(g_decalTypes) / sizeof(g_decalTypes[0]));
 
-static const char *g_decalFacingLabels[] = {"East", "West", "South", "North"};
-static const char *g_decalFacingJson[] = {"EAST", "WEST", "SOUTH", "NORTH"};
+static const char *g_decalFacingLabels[] = {"West", "East", "South", "North"};
+static const char *g_decalFacingJson[] = {"WEST", "EAST", "SOUTH", "NORTH"};
 static const int g_decalFacingVectors[][2] = {
-    {1, 0},
     {-1, 0},
+    {1, 0},
     {0, 1},
     {0, -1},
 };
@@ -332,6 +350,116 @@ static int editor_screenToTileX(float screenX, float tileSize, float originX)
   return MAP_WIDTH - 1 - (int)gridX;
 }
 
+static ImVec2 editor_worldToScreenPos(float worldX, float worldY, float tileSize,
+                                      ImVec2 origin)
+{
+  ImVec2 pos = {
+      editor_worldToScreenX(worldX, tileSize, origin.x),
+      origin.y + worldY * tileSize,
+  };
+  return pos;
+}
+
+static void editor_makeAbbrev(const char *source, char *out, size_t outSize)
+{
+  if (!out || outSize == 0)
+    return;
+  out[0] = '\0';
+  if (!source)
+    return;
+
+  char first = '\0';
+  char second = '\0';
+  const char *p = source;
+  while (*p)
+  {
+    if (isalnum((unsigned char)*p))
+    {
+      first = (char)toupper((unsigned char)*p);
+      break;
+    }
+    ++p;
+  }
+  if (!first)
+  {
+    out[0] = '?';
+    if (outSize > 1)
+      out[1] = '\0';
+    return;
+  }
+
+  const char *lastWordStart = NULL;
+  bool inWord = false;
+  for (p = source; *p; ++p)
+  {
+    if (isalnum((unsigned char)*p))
+    {
+      if (!inWord)
+      {
+        lastWordStart = p;
+        inWord = true;
+      }
+    }
+    else
+    {
+      inWord = false;
+    }
+  }
+
+  if (lastWordStart && lastWordStart != source)
+    second = (char)toupper((unsigned char)*lastWordStart);
+
+  if (!second)
+  {
+    p = source;
+    while (*p && !isalnum((unsigned char)*p))
+      ++p;
+    if (*p)
+    {
+      ++p;
+      while (*p && !isalnum((unsigned char)*p))
+        ++p;
+      if (*p)
+        second = (char)toupper((unsigned char)*p);
+    }
+  }
+
+  if (!second)
+    second = first;
+
+  out[0] = first;
+  if (outSize > 1)
+  {
+    out[1] = second;
+    if (outSize > 2)
+      out[2] = '\0';
+    else
+      out[1] = '\0';
+  }
+}
+
+static void editor_drawShadowedText(ImDrawList *drawList, ImVec2 pos,
+                                    ImU32 color, const char *text)
+{
+  if (!text || text[0] == '\0')
+    return;
+  ImVec2 shadow = {pos.x + 1.0f, pos.y + 1.0f};
+  ImDrawList_AddText_Vec2(drawList, shadow, EDITOR_COL32(0, 0, 0, 170), text,
+                          NULL);
+  ImDrawList_AddText_Vec2(drawList, pos, color, text, NULL);
+}
+
+static void editor_drawCenteredLabel(ImDrawList *drawList, ImVec2 center,
+                                     const char *text, ImU32 color)
+{
+  if (!text || text[0] == '\0')
+    return;
+  ImVec2 size;
+  igCalcTextSize(&size, text, NULL, false, 0.0f);
+  ImVec2 pos = {center.x - size.x * 0.5f, center.y - size.y * 0.5f};
+  editor_drawShadowedText(drawList, pos, color, text);
+}
+
 static float editor_wrapDegrees(float degrees)
 {
   float wrapped = fmodf(degrees, 360.0f);
@@ -362,6 +490,16 @@ static int editor_decalFacingIndexFromVector(int x, int y)
       return i;
   }
   return 0;
+}
+
+static const EnemyType *editor_enemyTypeFromAnimation(const char *animation)
+{
+  if (!animation)
+    return NULL;
+  for (int i = 0; i < g_enemyTypeCount; ++i)
+    if (strcmp(g_enemyTypes[i].animation, animation) == 0)
+      return &g_enemyTypes[i];
+  return NULL;
 }
 
 static int editor_equalsIgnoreCase(const char *a, const char *b)
@@ -732,6 +870,8 @@ static void editor_applyDecalFacing(EditorDecal *decal, int facingIndex,
     editor_decalFacingVector(facingIndex, &dirX, &dirY);
     if (dirX != 0 || dirY != 0)
     {
+      int previousDoorX = decal->doorX;
+      int previousDoorY = decal->doorY;
       int targetX = decal->tileX;
       int targetY = decal->tileY;
       bool found = false;
@@ -752,8 +892,16 @@ static void editor_applyDecalFacing(EditorDecal *decal, int facingIndex,
       }
       if (!found)
       {
-        decal->doorX = decal->tileX;
-        decal->doorY = decal->tileY;
+        decal->doorX = previousDoorX;
+        decal->doorY = previousDoorY;
+        if (decal->doorX < 0 || decal->doorX >= MAP_WIDTH || decal->doorY < 0 ||
+            decal->doorY >= MAP_HEIGHT || g_levelTiles[decal->doorX][decal->doorY] == 0)
+        {
+          decal->doorX = decal->tileX;
+          decal->doorY = decal->tileY;
+          editor_setWarningStatus(
+              "No solid wall found in facing direction; please assign a door.");
+        }
       }
     }
   }
@@ -2014,6 +2162,7 @@ static void editor_loadTileTextures(void)
         stbi_load(wallTextures[i].path, &w, &h, &c, STBI_rgb_alpha);
     if (!pixels)
       continue;
+    editor_apply_colorkey(pixels, w, h);
     TileTexture *slot = &g_tileTextures[g_tileTextureCount++];
     slot->id = upload_texture_rgba(pixels, w, h);
     slot->width = w;
@@ -2031,6 +2180,7 @@ static void editor_loadTileTextures(void)
         stbi_load(decorTextures[i].path, &w, &h, &c, STBI_rgb_alpha);
     if (!pixels)
       continue;
+    editor_apply_colorkey(pixels, w, h);
     TileTexture *slot = &g_tileTextures[g_tileTextureCount++];
     slot->id = upload_texture_rgba(pixels, w, h);
     slot->width = w;
@@ -2048,6 +2198,7 @@ static void editor_loadTileTextures(void)
         stbi_load(entityTextures[i].path, &w, &h, &c, STBI_rgb_alpha);
     if (!pixels)
       continue;
+    editor_apply_colorkey(pixels, w, h);
     TileTexture *slot = &g_tileTextures[g_tileTextureCount++];
     slot->id = upload_texture_rgba(pixels, w, h);
     slot->width = w;
@@ -2065,6 +2216,7 @@ static void editor_loadTileTextures(void)
         stbi_load(decalTextures[i].path, &w, &h, &c, STBI_rgb_alpha);
     if (!pixels)
       continue;
+    editor_apply_colorkey(pixels, w, h);
     TileTexture *slot = &g_tileTextures[g_tileTextureCount++];
     slot->id = upload_texture_rgba(pixels, w, h);
     slot->width = w;
@@ -3163,6 +3315,16 @@ int main(int argc, char **argv)
       igGetCursorScreenPos(&origin);
       ImDrawList *drawList = igGetWindowDrawList();
 
+      bool leverDoorFlags[MAP_WIDTH][MAP_HEIGHT];
+      memset(leverDoorFlags, 0, sizeof(leverDoorFlags));
+      for (int i = 0; i < g_decalCount; ++i)
+      {
+        const EditorDecal *decal = &g_decals[i];
+        if (decal->doorX >= 0 && decal->doorX < MAP_WIDTH && decal->doorY >= 0 &&
+            decal->doorY < MAP_HEIGHT)
+          leverDoorFlags[decal->doorX][decal->doorY] = true;
+      }
+
       for (int y = 0; y < MAP_HEIGHT; ++y)
       {
         for (int x = 0; x < MAP_WIDTH; ++x)
@@ -3176,6 +3338,24 @@ int main(int argc, char **argv)
           ImDrawList_AddRectFilled(drawList, p0, p1, fillColor, 0.0f, 0);
           ImDrawList_AddRect(drawList, p0, p1, EDITOR_COL32(70, 70, 70, 255),
                              0.0f, 0, 1.0f);
+          if (leverDoorFlags[x][y])
+          {
+            ImDrawList_AddRectFilled(drawList, p0, p1,
+                                     EDITOR_COL32(255, 170, 60, 60), 0.0f, 0);
+            ImDrawList_AddRect(drawList, p0, p1,
+                               EDITOR_COL32(255, 180, 80, 220), 0.0f, 0, 2.0f);
+          }
+          if (tile > 0)
+          {
+            char label[5];
+            if (tile <= NUM_WALL_TEXTURES)
+              editor_makeAbbrev(wallTextures[tile - 1].name, label, sizeof(label));
+            else
+              snprintf(label, sizeof(label), "%d", tile);
+            ImVec2 textPos = {p0.x + 3.0f, p0.y + 2.0f};
+            editor_drawShadowedText(drawList, textPos,
+                                    EDITOR_COL32(255, 255, 255, 220), label);
+          }
         }
       }
 
@@ -3194,6 +3374,14 @@ int main(int argc, char **argv)
         ImDrawList_AddRectFilled(drawList, p0, p1, fill, 4.0f, 0);
         ImDrawList_AddRect(drawList, p0, p1, EDITOR_COL32(15, 40, 25, 255), 4.0f,
                            0, 1.5f);
+        if (decor->typeIndex >= 0 && decor->typeIndex < g_decorationTypeCount)
+        {
+          char label[5];
+          editor_makeAbbrev(g_decorationTypes[decor->typeIndex].label, label,
+                            sizeof(label));
+          editor_drawCenteredLabel(drawList, center, label,
+                                   EDITOR_COL32(235, 255, 235, 255));
+        }
       }
 
       for (int i = 0; i < g_pickupCount; ++i)
@@ -3213,6 +3401,14 @@ int main(int argc, char **argv)
         ImDrawList_AddQuadFilled(drawList, pTop, pRight, pBottom, pLeft, fill);
         ImDrawList_AddQuad(drawList, pTop, pRight, pBottom, pLeft,
                            EDITOR_COL32(40, 25, 5, 255), 1.5f);
+        if (pickup->typeIndex >= 0 && pickup->typeIndex < g_pickupTypeCount)
+        {
+          char label[5];
+          editor_makeAbbrev(g_pickupTypes[pickup->typeIndex].label, label,
+                            sizeof(label));
+          editor_drawCenteredLabel(drawList, center, label,
+                                   EDITOR_COL32(255, 240, 200, 255));
+        }
       }
 
       for (int i = 0; i < g_decalCount; ++i)
@@ -3230,6 +3426,30 @@ int main(int argc, char **argv)
         ImDrawList_AddRectFilled(drawList, p0, p2, fill, 4.0f, 0);
         ImDrawList_AddRect(drawList, p0, p2, EDITOR_COL32(20, 50, 120, 255),
                            4.0f, 0, 1.5f);
+        if (decal->typeIndex >= 0 && decal->typeIndex < g_decalTypeCount)
+        {
+          char label[5];
+          editor_makeAbbrev(g_decalTypes[decal->typeIndex].label, label,
+                            sizeof(label));
+          editor_drawCenteredLabel(drawList, center, label,
+                                   EDITOR_COL32(215, 230, 255, 255));
+        }
+
+        int dirX = 0;
+        int dirY = 0;
+        editor_decalFacingVector(decal->facingIndex, &dirX, &dirY);
+        if (dirX != 0 || dirY != 0)
+        {
+          const float arrowLength = 0.5f;
+          ImVec2 arrowEnd =
+              editor_worldToScreenPos(decal->x + (float)dirX * arrowLength,
+                                      decal->y + (float)dirY * arrowLength,
+                                      tileSize, origin);
+          ImDrawList_AddLine(drawList, center, arrowEnd,
+                             EDITOR_COL32(20, 50, 120, 255), 2.0f);
+          ImDrawList_AddCircleFilled(drawList, arrowEnd, half * 0.35f,
+                                     EDITOR_COL32(20, 50, 120, 255), 12);
+        }
       }
 
       for (int i = 0; i < g_wallTextCount; ++i)
@@ -3246,11 +3466,21 @@ int main(int argc, char **argv)
         ImDrawList_AddRectFilled(drawList, p0, p1, fill, 3.0f, 0);
         ImDrawList_AddRect(drawList, p0, p1, EDITOR_COL32(60, 60, 20, 255),
                            3.0f, 0, 1.2f);
-        ImVec2 facingDir = {-g_decalFacingVectors[text->facingIndex][0] * half,
-                            g_decalFacingVectors[text->facingIndex][1] * half};
-        ImVec2 arrowEnd = {center.x + facingDir.x, center.y + facingDir.y};
-        ImDrawList_AddLine(drawList, center, arrowEnd,
-                           EDITOR_COL32(40, 40, 10, 255), 2.0f);
+        int dirX = 0;
+        int dirY = 0;
+        editor_decalFacingVector(text->facingIndex, &dirX, &dirY);
+        if (dirX != 0 || dirY != 0)
+        {
+          const float arrowLength = 0.45f;
+          ImVec2 arrowEnd =
+              editor_worldToScreenPos(text->x + (float)dirX * arrowLength,
+                                      text->y + (float)dirY * arrowLength,
+                                      tileSize, origin);
+          ImDrawList_AddLine(drawList, center, arrowEnd,
+                             EDITOR_COL32(40, 40, 10, 255), 2.0f);
+          ImDrawList_AddCircleFilled(drawList, arrowEnd, half * 0.25f,
+                                     EDITOR_COL32(40, 40, 10, 255), 12);
+        }
       }
 
       for (int i = 0; i < g_enemyCount; ++i)
@@ -3266,6 +3496,14 @@ int main(int argc, char **argv)
         ImDrawList_AddCircleFilled(drawList, center, radius, fill, 16);
         ImDrawList_AddCircle(drawList, center, radius,
                              EDITOR_COL32(20, 20, 20, 255), 16, 2.0f);
+        const EnemyType *type = editor_enemyTypeFromAnimation(enemy->animation);
+        if (type)
+        {
+          char label[5];
+          editor_makeAbbrev(type->label, label, sizeof(label));
+          editor_drawCenteredLabel(drawList, center, label,
+                                   EDITOR_COL32(255, 230, 230, 255));
+        }
       }
 
       ImVec2 spawnCenter = {editor_worldToScreenX(g_playerSpawnPos.x, tileSize, origin.x),
@@ -3282,11 +3520,16 @@ int main(int argc, char **argv)
           (float)(g_playerSpawnDirDegrees * (float)M_PI / 180.0f);
       float worldDirX = cosf(dirRad);
       float worldDirY = -sinf(dirRad);
-      ImVec2 dirVec = {-worldDirX, worldDirY};
-      ImVec2 arrowHead = {spawnCenter.x + dirVec.x * spawnRadius,
-                          spawnCenter.y + dirVec.y * spawnRadius};
-      ImVec2 arrowTail = {spawnCenter.x - dirVec.x * (spawnRadius * 0.4f),
-                          spawnCenter.y - dirVec.y * (spawnRadius * 0.4f)};
+      const float arrowLenWorld = 0.55f;
+      const float tailLenWorld = 0.25f;
+      ImVec2 arrowHead =
+          editor_worldToScreenPos(g_playerSpawnPos.x + worldDirX * arrowLenWorld,
+                                  g_playerSpawnPos.y + worldDirY * arrowLenWorld,
+                                  tileSize, origin);
+      ImVec2 arrowTail =
+          editor_worldToScreenPos(g_playerSpawnPos.x - worldDirX * tailLenWorld,
+                                  g_playerSpawnPos.y - worldDirY * tailLenWorld,
+                                  tileSize, origin);
       ImDrawList_AddLine(drawList, arrowTail, arrowHead, spawnOutline, 2.2f);
       ImDrawList_AddCircleFilled(drawList, arrowHead, spawnRadius * 0.18f,
                                  spawnOutline, 12);

@@ -11,7 +11,7 @@
 // texture count
 #define NUM_WALL_TEXTURES 13
 #define NUM_DECOR_TEXTURES 3
-#define NUM_ENTITY_TEXTURES 1
+#define NUM_ENTITY_TEXTURES 4
 #define NUM_DECAL_TEXTURES 2
 #define NUM_TEXTURES                                                           \
   (NUM_WALL_TEXTURES + NUM_DECOR_TEXTURES + NUM_ENTITY_TEXTURES +              \
@@ -49,7 +49,10 @@ static const TextureInfo decorTextures[NUM_DECOR_TEXTURES] = {
     {"assets/textures/decorations/greenlight.png", "GreenLight"}};
 
 static const TextureInfo entityTextures[NUM_ENTITY_TEXTURES] = {
-    {"assets/textures/entities/money.png", "Money"}};
+    {"assets/textures/entities/money.png", "Money"},
+    {"assets/textures/pickups/ammunition.png", "Ammunition"},
+    {"assets/textures/pickups/health.png", "Health"},
+    {"assets/textures/pickups/key.png", "Key"}};
 
 static const TextureInfo decalTextures[NUM_DECAL_TEXTURES] = {
     {"assets/textures/decals/lever/off.png", "LeverOff"},

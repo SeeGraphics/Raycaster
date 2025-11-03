@@ -1,9 +1,17 @@
 #include "weapons.h"
+#include <string.h>
 
-WeaponProperties weaponProperties[TOTAL_GUNS] = {
-    {0, 0.0, 0.0, 100, 55},                     // 0 semi: SHOTGUN
-    {0, 0.0, 0.0, 50, 140},                     // 1 semi: ROCKET
-    {0, 0.0, 0.0, 150, 20},                     // 2 semi: PISTOL
-    {0, 0.0, 0.0, 80, 35},                      // 3 semi: SINGLE
-    {1, FRAMETIME_MINIGUN_SHOOT, 0.0, 500, 8},  // 4 automatic: MINIGUN
+static const WeaponProperties kDefaultWeaponProperties[TOTAL_GUNS] = {
+    {0, 0.0, 0.0, 100, 55},                    // SHOTGUN
+    {0, 0.0, 0.0, 50, 140},                    // ROCKET
+    {0, 0.0, 0.0, 150, 20},                    // PISTOL
+    {0, 0.0, 0.0, 80, 35},                     // SINGLE
+    {1, FRAMETIME_MINIGUN_SHOOT, 0.0, 500, 8}, // MINIGUN
 };
+
+WeaponProperties weaponProperties[TOTAL_GUNS];
+
+void weapons_resetProperties(void)
+{
+  memcpy(weaponProperties, kDefaultWeaponProperties, sizeof(weaponProperties));
+}

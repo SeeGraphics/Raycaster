@@ -11,7 +11,9 @@
 #define TEX_BARREL 14
 #define TEX_GREENLIGHT 15
 #define TEX_MONEY 16
-
+#define TEX_AMMO 17
+#define TEX_HEALTH 18
+#define TEX_KEY 19
 typedef enum
 {
   SPRITE_DECORATION = 0,

@@ -32,6 +32,9 @@ void loadImage(u32 *texture, int width, int height, const char *filename) {
     return;
   }
 
+  Uint32 colorKey = SDL_MapRGB(surface->format, 0x99, 0xE5, 0x50);
+  SDL_SetColorKey(surface, SDL_TRUE, colorKey);
+
   SDL_Surface *converted =
       SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_ARGB8888, 0);
   SDL_FreeSurface(surface);
@@ -40,6 +43,17 @@ void loadImage(u32 *texture, int width, int height, const char *filename) {
     fprintf(stderr, "\033[31m[ERROR] Failed to convert %s: %s\033[0m\n",
             filename, SDL_GetError());
     return;
+  }
+
+  Uint32 keyRGB = SDL_MapRGB(converted->format, 0x99, 0xE5, 0x50) & 0x00FFFFFF;
+  for (int y = 0; y < converted->h; ++y) {
+    Uint32 *row =
+        (Uint32 *)((Uint8 *)converted->pixels + (size_t)y * converted->pitch);
+    for (int x = 0; x < converted->w; ++x) {
+      Uint32 pixel = row[x];
+      if ((pixel & 0x00FFFFFFu) == keyRGB)
+        row[x] = pixel & 0x00FFFFFFu;
+    }
   }
 
   memset(texture, 0, (size_t)width * (size_t)height * sizeof(u32));

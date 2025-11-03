@@ -1,249 +1,533 @@
 {
   "settings": {
-    "floor_texture": 6,
-    "ceiling_texture": 3,
-    "player_spawn_x": 2.500,
-    "player_spawn_y": 21.500,
-    "player_spawn_dir": 0.000
+    "floor_texture": 8,
+    "ceiling_texture": 8,
+    "player_spawn_x": 2.5,
+    "player_spawn_y": 21.5,
+    "player_spawn_dir": 0.0
   },
   "decorations": [
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
-      "x": 2.500,
-      "y": 4.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 2.500,
-      "y": 8.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 6.500,
-      "y": 8.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 10.500,
-      "y": 8.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 15.500,
-      "y": 8.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 19.500,
-      "y": 8.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 15.500,
-      "y": 4.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 21.500,
-      "y": 5.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 17.500,
-      "y": 13.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 5.500,
-      "y": 13.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 2.500,
-      "y": 13.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 8.500,
-      "y": 13.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 2.500,
-      "y": 17.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 5.500,
-      "y": 17.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 8.500,
-      "y": 17.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 18.500,
-      "y": 17.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 12.500,
-      "y": 17.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 16.500,
-      "y": 21.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 20.500,
-      "y": 21.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 6.500,
-      "y": 21.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "GREENLIGHT",
-      "x": 3.500,
-      "y": 21.500,
-      "scale": 1.000
+      "x": 4.5,
+      "y": 21.5,
+      "scale": 1.0
     },
     {
       "type": "decoration",
       "texture": "PILLAR",
-      "x": 12.500,
-      "y": 3.500,
-      "scale": 1.000
+      "x": 1.5,
+      "y": 19.5,
+      "scale": 1.0
     },
     {
       "type": "decoration",
       "texture": "PILLAR",
-      "x": 18.500,
-      "y": 3.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 14.500,
-      "y": 12.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 11.500,
-      "y": 12.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 13.500,
-      "y": 18.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "PILLAR",
-      "x": 10.500,
-      "y": 18.500,
-      "scale": 1.000
+      "x": 1.5,
+      "y": 22.5,
+      "scale": 1.0
     },
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
-      "x": 6.500,
-      "y": 4.500,
-      "scale": 1.000
+      "x": 10.5,
+      "y": 21.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 14.5,
+      "y": 20.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 17.5,
+      "y": 21.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 20.5,
+      "y": 20.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 11.5,
+      "y": 19.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 8.5,
+      "y": 19.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 8.5,
+      "y": 22.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 11.5,
+      "y": 22.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 13.5,
+      "y": 22.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 22.5,
+      "y": 22.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 22.5,
+      "y": 19.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 13.5,
+      "y": 19.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 16.5,
+      "y": 16.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 17.5,
+      "y": 12.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 16.5,
+      "y": 9.5,
+      "scale": 1.0
     },
     {
       "type": "decoration",
       "texture": "BARREL",
-      "x": 5.500,
-      "y": 6.500,
-      "scale": 1.000
-    },
-    {
-      "type": "decoration",
-      "texture": "BARREL",
-      "x": 7.500,
-      "y": 6.500,
-      "scale": 1.000
+      "x": 17.5,
+      "y": 9.5,
+      "scale": 1.0
     },
     {
       "type": "decoration",
       "texture": "PILLAR",
-      "x": 6.500,
-      "y": 6.500,
-      "scale": 1.000
+      "x": 22.5,
+      "y": 12.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 22.5,
+      "y": 13.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 22.5,
+      "y": 14.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 22.5,
+      "y": 9.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 19.5,
+      "y": 17.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 20.5,
+      "y": 17.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 19.5,
+      "y": 16.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 13.5,
+      "y": 10.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 10.5,
+      "y": 10.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 7.5,
+      "y": 10.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 4.5,
+      "y": 10.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 1.5,
+      "y": 10.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 1.5,
+      "y": 9.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 1.5,
+      "y": 11.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 9.5,
+      "y": 9.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 8.5,
+      "y": 11.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 12.5,
+      "y": 11.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 14.5,
+      "y": 13.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 14.5,
+      "y": 17.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 1.5,
+      "y": 17.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 1.5,
+      "y": 13.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 7.5,
+      "y": 17.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 7.5,
+      "y": 13.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 12.5,
+      "y": 15.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 8.5,
+      "y": 15.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 4.5,
+      "y": 15.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 7.5,
+      "y": 5.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 7.5,
+      "y": 2.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 2.5,
+      "y": 2.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 2.5,
+      "y": 5.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 1.5,
+      "y": 1.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 1.5,
+      "y": 7.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 1.5,
+      "y": 4.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 4.5,
+      "y": 7.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 9.5,
+      "y": 1.5,
+      "scale": 1.0
+    },
+    {
+      "type": "decoration",
+      "texture": "PILLAR",
+      "x": 6.5,
+      "y": 1.5,
+      "scale": 1.0
     }
   ],
   "pickups": [
+    {
+      "type": "pickup",
+      "texture": "MONEY",
+      "x": 12.5,
+      "y": 7.5,
+      "scale": 0.2
+    },
+    {
+      "type": "pickup",
+      "texture": "MONEY",
+      "x": 11.5,
+      "y": 15.5,
+      "scale": 0.2
+    },
+    {
+      "type": "pickup",
+      "texture": "AMMUNITION",
+      "x": 13.5,
+      "y": 11.5,
+      "scale": 0.25
+    },
+    {
+      "type": "pickup",
+      "texture": "HEALTH",
+      "x": 10.5,
+      "y": 11.5,
+      "scale": 0.25
+    },
+    {
+      "type": "pickup",
+      "texture": "KEY",
+      "x": 12.5,
+      "y": 12.5,
+      "scale": 0.25
+    },
+    {
+      "type": "pickup",
+      "texture": "AMMUNITION",
+      "x": 5.5,
+      "y": 19.5,
+      "scale": 0.25
+    },
+    {
+      "type": "pickup",
+      "texture": "HEALTH",
+      "x": 4.5,
+      "y": 19.5,
+      "scale": 0.25
+    },
+    {
+      "type": "pickup",
+      "texture": "KEY",
+      "x": 3.5,
+      "y": 19.5,
+      "scale": 0.25
+    }
   ],
   "decals": [
     {
       "type": "LEVER",
-      "x": 10.500,
-      "y": 22.500,
+      "x": 7.5,
+      "y": 21.5,
       "facing": "WEST",
+      "door_x": 7,
+      "door_y": 20
+    },
+    {
+      "type": "LEVER",
+      "x": 15.5,
+      "y": 10.5,
+      "facing": "EAST",
+      "door_x": 15,
+      "door_y": 9
+    },
+    {
+      "type": "LEVER",
+      "x": 16.5,
+      "y": 18.5,
+      "facing": "SOUTH",
+      "door_x": 17,
+      "door_y": 18
+    },
+    {
+      "type": "LEVER",
+      "x": 18.5,
+      "y": 13.5,
+      "facing": "WEST",
+      "door_x": 18,
+      "door_y": 12
+    },
+    {
+      "type": "LEVER",
+      "x": 3.5,
+      "y": 8.5,
+      "facing": "SOUTH",
+      "door_x": 2,
+      "door_y": 8
+    },
+    {
+      "type": "LEVER",
+      "x": 5.5,
+      "y": 12.5,
+      "facing": "NORTH",
+      "door_x": 6,
+      "door_y": 12
+    },
+    {
+      "type": "LEVER",
+      "x": 10.5,
+      "y": 7.5,
+      "facing": "EAST",
       "door_x": 10,
-      "door_y": 21
+      "door_y": 6
     }
   ],
   "wall_texts": [
     {
-      "text": "Test hello world",
-      "x": 7.500,
-      "y": 23.500,
-      "facing": "NORTH",
-      "scale": 1.000,
+      "text": "Press E to open",
+      "x": 7.5,
+      "y": 19.5,
+      "facing": "WEST",
+      "scale": 0.8,
+      "font_size": 28,
+      "color_r": 255,
+      "color_g": 255,
+      "color_b": 255,
+      "color_a": 255
+    },
+    {
+      "text": "Nice! you completed the tutorial",
+      "x": 23.5,
+      "y": 3.5,
+      "facing": "WEST",
+      "scale": 0.6,
       "font_size": 28,
       "color_r": 255,
       "color_g": 255,
@@ -255,33 +539,89 @@
     {
       "type": "enemy",
       "animation": "DEMON_WALK",
-      "x": 5.500,
-      "y": 3.500,
-      "scale": 1.350,
+      "x": 16.5,
+      "y": 20.5,
+      "scale": 1.35,
       "health": 100
     },
     {
       "type": "enemy",
       "animation": "DEMON_WALK",
-      "x": 7.500,
-      "y": 3.500,
-      "scale": 1.350,
+      "x": 15.5,
+      "y": 21.5,
+      "scale": 1.35,
       "health": 100
     },
     {
       "type": "enemy",
       "animation": "DEMON_WALK",
-      "x": 5.500,
-      "y": 5.500,
-      "scale": 1.350,
+      "x": 18.5,
+      "y": 21.5,
+      "scale": 1.35,
       "health": 100
     },
     {
       "type": "enemy",
       "animation": "DEMON_WALK",
-      "x": 7.500,
-      "y": 5.500,
-      "scale": 1.350,
+      "x": 21.5,
+      "y": 20.5,
+      "scale": 1.35,
+      "health": 100
+    },
+    {
+      "type": "enemy",
+      "animation": "DEMON_WALK",
+      "x": 20.5,
+      "y": 14.5,
+      "scale": 1.35,
+      "health": 100
+    },
+    {
+      "type": "enemy",
+      "animation": "DEMON_WALK",
+      "x": 21.5,
+      "y": 11.5,
+      "scale": 1.35,
+      "health": 100
+    },
+    {
+      "type": "enemy",
+      "animation": "DEMON_WALK",
+      "x": 21.5,
+      "y": 16.5,
+      "scale": 1.35,
+      "health": 100
+    },
+    {
+      "type": "enemy",
+      "animation": "DEMON_WALK",
+      "x": 3.5,
+      "y": 11.5,
+      "scale": 1.35,
+      "health": 100
+    },
+    {
+      "type": "enemy",
+      "animation": "DEMON_WALK",
+      "x": 2.5,
+      "y": 9.5,
+      "scale": 1.35,
+      "health": 100
+    },
+    {
+      "type": "enemy",
+      "animation": "DEMON_WALK",
+      "x": 6.5,
+      "y": 9.5,
+      "scale": 1.35,
+      "health": 100
+    },
+    {
+      "type": "enemy",
+      "animation": "DEMON_WALK",
+      "x": 9.5,
+      "y": 11.5,
+      "scale": 1.35,
       "health": 100
     }
   ]

@@ -2,40 +2,17 @@
 #include "entities.h"
 #include "map.h"
 #include "sound.h"
-#include <math.h>
+#include "weapons.h"
 #include <stdio.h>
 
-static void engine_applyPlayerSpawn(Player *player)
-{
-  if (!player)
-    return;
-
-  double spawnX = player->posX;
-  double spawnY = player->posY;
-  double spawnDirDegrees = 0.0;
-  entities_getPlayerSpawn(&spawnX, &spawnY, &spawnDirDegrees);
-
-  player->posX = spawnX;
-  player->posY = spawnY;
-
-  const double degToRad = 3.14159265358979323846 / 180.0;
-  double dirRad = spawnDirDegrees * degToRad;
-  player->dirX = cos(dirRad);
-  player->dirY = -sin(dirRad);
-
-  double planeScale = hypot(PLANE_X, PLANE_Y);
-  if (planeScale <= 0.0)
-    planeScale = 0.88;
-  player->planeX = player->dirY * planeScale;
-  player->planeY = -player->dirX * planeScale;
-}
+static const char *kDefaultLevelMapPath = "levels/1/map.csv";
 
 int engine_init(Engine *engine) {
 
   engine->mode = GAME;
   engine->game = createGame();
 
-  if (map_loadFromCSV("levels/1/map.csv") != 0)
+  if (map_loadFromCSV(kDefaultLevelMapPath) != 0)
     fprintf(stderr, "\033[33m[WARN] Using built-in map layout\033[0m\n");
 
   // SDL + TTF
@@ -50,9 +27,11 @@ int engine_init(Engine *engine) {
   engine->player = createPlayer();
   engine->textures = createTextures();
   engine->sound = createSound();
+  loadAllAnimations();
   engine->sprites = entities_createWorldSprites();
   engine->font = font_init();
-  engine_applyPlayerSpawn(&engine->player);
+  weapons_resetProperties();
+  player_respawn(&engine->player);
 
   // Initialize Time variables
   engine->time = SDL_GetTicks();
@@ -63,7 +42,6 @@ int engine_init(Engine *engine) {
 
   // Allocate buffers, load textures, animations
   buffers_init(&engine->game);
-  loadAllAnimations();
   textures_load(&engine->textures);
   loadSounds(&engine->sound);
   loadMusic(&engine->sound);
@@ -80,6 +58,20 @@ int engine_init(Engine *engine) {
   SDL_SetRelativeMouseMode(SDL_TRUE);
 
   return 0;
+}
+
+void engine_reloadLevel(Engine *engine)
+{
+  if (!engine)
+    return;
+
+  if (map_loadFromCSV(kDefaultLevelMapPath) != 0)
+    fprintf(stderr, "\033[33m[WARN] Using built-in map layout\033[0m\n");
+
+  entities_reset();
+  engine->sprites = entities_createWorldSprites();
+  weapons_resetProperties();
+  player_respawn(&engine->player);
 }
 
 void engine_updateTime(Engine *engine) {

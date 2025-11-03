@@ -4,11 +4,14 @@
 #include "enemies.h"
 #include "weapons.h"
 #include "entities.h"
+#include <math.h>
 
 int mouseUngrabbed = 0;
 
 int handleInput(Engine *engine, double deltaTime) {
   SDL_Event event;
+  engine->player.velX = 0.0;
+  engine->player.velY = 0.0;
 
   while (SDL_PollEvent(&event)) {
 
@@ -51,8 +54,15 @@ int handleInput(Engine *engine, double deltaTime) {
 
     /* KEY EVENTS */
     if (event.type == SDL_KEYDOWN) {
+      SDL_Scancode sc = event.key.keysym.scancode;
+
+      if (sc == SDL_SCANCODE_R && engine->player.health <= 0) {
+        engine_reloadLevel(engine);
+        continue;
+      }
+
       // Fullscreen toggle
-      if (event.key.keysym.scancode == TOGGLE_FULLSCREEN) {
+      if (sc == TOGGLE_FULLSCREEN) {
         static bool isFullscreen = false;
         isFullscreen = !isFullscreen;
         SDL_SetWindowFullscreen(engine->game.window,
@@ -61,26 +71,29 @@ int handleInput(Engine *engine, double deltaTime) {
       }
 
       // Quit
-      if (event.key.keysym.scancode == CLOSE_GAME_ESC) {
+      if (sc == CLOSE_GAME_ESC) {
         engine_cleanup(engine, EXIT_SUCCESS);
         return 1;
       }
 
-      if (event.key.keysym.scancode == SDL_SCANCODE_E) {
+      if (engine->player.health <= 0)
+        continue;
+
+      if (sc == SDL_SCANCODE_E) {
         entities_tryInteract(engine);
       }
 
       // ungrab Mouse
-      if (event.key.keysym.scancode == UNGRAB_MOUSE && mouseUngrabbed == 0) {
+      if (sc == UNGRAB_MOUSE && mouseUngrabbed == 0) {
         SDL_SetRelativeMouseMode(SDL_FALSE);
         mouseUngrabbed = 1;
-      } else if (event.key.keysym.scancode == UNGRAB_MOUSE &&
+      } else if (sc == UNGRAB_MOUSE &&
                  mouseUngrabbed == 1) {
         SDL_SetRelativeMouseMode(SDL_TRUE);
         mouseUngrabbed = 0;
       }
 
-      if (event.key.keysym.scancode == CYCLE_GAME) {
+      if (sc == CYCLE_GAME) {
         engine->mode = (engine->mode + 1) % TOTAL_MODES;
         switch (engine->mode) {
         case 0:
@@ -100,6 +113,8 @@ int handleInput(Engine *engine, double deltaTime) {
 
     /* MOUSE EVENTS */
     if (event.type == SDL_MOUSEWHEEL && !engine->player.shooting) {
+      if (engine->player.health <= 0)
+        continue;
       if (event.wheel.y > 0) {
         // Scroll up -> next gun
         engine->player.selectedGun =
@@ -113,6 +128,8 @@ int handleInput(Engine *engine, double deltaTime) {
     }
 
     if (event.type == SDL_MOUSEMOTION) {
+      if (engine->player.health <= 0)
+        continue;
       // Horizontal rotation
       player_rotate(&engine->player, mouse_rotationAmount(engine->player.sensX,
                                                           -event.motion.xrel));
@@ -129,6 +146,8 @@ int handleInput(Engine *engine, double deltaTime) {
     }
 
   if (event.type == SDL_MOUSEBUTTONDOWN) {
+      if (engine->player.health <= 0)
+        continue;
       if (event.button.button == MSB_LEFT) {
         engine->player.mouseHeld = 1;
         weaponProperties[engine->player.selectedGun].fireAccumulator = 0;
@@ -200,7 +219,7 @@ int handleInput(Engine *engine, double deltaTime) {
     }
   }
 
-  if (engine->player.mouseHeld &&
+  if (engine->player.health > 0 && engine->player.mouseHeld &&
       weaponProperties[engine->player.selectedGun].ammunition > 0) {
     WeaponProperties *weapon = &weaponProperties[engine->player.selectedGun];
     if (weapon->automatic) {
@@ -232,15 +251,28 @@ int handleInput(Engine *engine, double deltaTime) {
   Sprite *sprites = engine->sprites;
   int spriteCount = entities_getSpriteCount();
 
-  // Movement
+  int moveDir = 0;
   if (state[SDL_SCANCODE_W] || state[SDL_SCANCODE_UP])
-    player_move(&engine->player, deltaTime, worldMap, sprites, spriteCount, 1);
+    moveDir += 1;
   if (state[SDL_SCANCODE_S] || state[SDL_SCANCODE_DOWN])
-    player_move(&engine->player, deltaTime, worldMap, sprites, spriteCount, -1);
-  if (state[SDL_SCANCODE_A])
-    player_strafe(&engine->player, deltaTime, worldMap, sprites, spriteCount, -1);
+    moveDir -= 1;
+
+  int strafeDir = 0;
   if (state[SDL_SCANCODE_D])
-    player_strafe(&engine->player, deltaTime, worldMap, sprites, spriteCount, 1);
+    strafeDir += 1;
+  if (state[SDL_SCANCODE_A])
+    strafeDir -= 1;
+
+  if (engine->player.health > 0) {
+    player_move(&engine->player, deltaTime, worldMap, sprites, spriteCount, moveDir);
+    player_strafe(&engine->player, deltaTime, worldMap, sprites, spriteCount, strafeDir);
+  } else {
+    engine->player.velocityForward = 0.0;
+    engine->player.velocityStrafe = 0.0;
+    engine->player.velX = 0.0;
+    engine->player.velY = 0.0;
+    engine->player.mouseHeld = 0;
+  }
 
   // Rotation with keys
   if (state[SDL_SCANCODE_LEFT])
@@ -249,6 +281,30 @@ int handleInput(Engine *engine, double deltaTime) {
   if (state[SDL_SCANCODE_RIGHT])
     player_rotate(&engine->player,
                   key_rotationAmount(engine->player.rotSpeed, deltaTime, -1));
+
+  double speed =
+      sqrt(engine->player.velX * engine->player.velX +
+           engine->player.velY * engine->player.velY);
+  double normalized =
+      (engine->player.moveSpeed > 0.0)
+          ? fmin(speed / engine->player.moveSpeed, 1.0)
+          : 0.0;
+  if (normalized > 0.0)
+  {
+    engine->player.bobTime += deltaTime * (0.4 + 0.3 * normalized);
+    if (engine->player.bobTime > 1000.0)
+      engine->player.bobTime = fmod(engine->player.bobTime, 1000.0);
+  }
+  else
+  {
+    engine->player.bobTime = 0.0;
+  }
+
+  if (engine->player.damageFlashTimer > 0.0) {
+    engine->player.damageFlashTimer -= deltaTime;
+    if (engine->player.damageFlashTimer < 0.0)
+      engine->player.damageFlashTimer = 0.0;
+  }
 
   return 0;
 }

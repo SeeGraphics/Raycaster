@@ -13,6 +13,9 @@
 #define FRAMETIME_MINIGUN_IDLE 0.01
 #define FRAMETIME_MINIGUN_SHOOT 0.14
 #define FRAMETIME_DEMON_WALK 0.1
+#define FRAMETIME_DEMON_ATTACK 0.12
+#define FRAMETIME_DEMON_HIT 0.24
+#define FRAMETIME_DEMON_DEATH 0.14
 
 /* FRAME COUNTS */
 #define FRAMES_SHOTGUN_SHOOT 3
@@ -23,6 +26,9 @@
 #define FRAMES_MINIGUN_IDLE 1
 #define FRAMES_MINIGUN_SHOOT 2
 #define FRAMES_DEMON_WALK 4
+#define FRAMES_DEMON_ATTACK 3
+#define FRAMES_DEMON_HIT 1
+#define FRAMES_DEMON_DEATH 6
 
 typedef struct {
   u32 *pixels;
@@ -49,6 +55,9 @@ typedef struct {
   Animation minigun_shoot;
   Animation minigun_idle;
   Animation demon_walk;
+  Animation demon_attack;
+  Animation demon_hit;
+  Animation demon_death;
 } AnimationRegistry;
 
 extern AnimationRegistry animations;

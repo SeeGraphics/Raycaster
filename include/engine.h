@@ -31,6 +31,7 @@ typedef struct Engine {
 } Engine;
 
 int engine_init(Engine *engine);
+void engine_reloadLevel(Engine *engine);
 void engine_updateTime(Engine *engine);
 void engine_cleanup(Engine *engine, int exitCode);
 

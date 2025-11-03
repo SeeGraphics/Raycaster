@@ -5,11 +5,269 @@
 #include <float.h>
 #include <stdbool.h>
 #include <math.h>
+#include <string.h>
 
 static const f64 SPRITE_BASE_HIT_RADIUS = 0.30;
 static const double ENEMY_MOVE_SPEED = 1.6;
+static const double ENEMY_ATTACK_RANGE = 1.25;
+static const double ENEMY_ATTACK_COOLDOWN = 1.0;
+static const int ENEMY_ATTACK_DAMAGE = 10;
+
+typedef enum
+{
+  ENEMY_TYPE_NONE = 0,
+  ENEMY_TYPE_DEMON,
+} EnemyType;
+
+typedef enum
+{
+  ENEMY_STATE_CHASE = 0,
+  ENEMY_STATE_ATTACK,
+  ENEMY_STATE_HIT,
+  ENEMY_STATE_DYING,
+  ENEMY_STATE_DEAD,
+} EnemyState;
+
+typedef struct
+{
+  Sprite *sprite;
+  EnemyType type;
+  EnemyState state;
+  Animation walk;
+  Animation attack;
+  Animation hit;
+  Animation death;
+  Animation *current;
+  double attackCooldown;
+  bool attackDamageApplied;
+  bool inUse;
+} EnemyController;
+
+static EnemyController g_enemyControllers[NUM_SPRITES];
 
 #define ASTAR_MAX_NODES (MAP_WIDTH * MAP_HEIGHT)
+
+static Animation animation_clone_template(const Animation *source, int playing,
+                                          int loopingOverride)
+{
+  Animation clone;
+  memset(&clone, 0, sizeof(Animation));
+  if (!source)
+    return clone;
+  clone = *source;
+  clone.currentFrame = 0;
+  clone.timeAccumulator = 0.0;
+  clone.playing = playing;
+  clone.looping = (loopingOverride >= 0) ? loopingOverride : source->looping;
+  return clone;
+}
+
+static void animation_update_instance(Animation *animation, double deltaTime)
+{
+  if (!animation || !animation->frames || animation->frameCount <= 0)
+    return;
+
+  if (!animation->playing)
+    return;
+
+  animation->timeAccumulator += deltaTime;
+  if (animation->timeAccumulator < animation->frameTime)
+    return;
+
+  animation->timeAccumulator -= animation->frameTime;
+  animation->currentFrame++;
+
+  if (animation->currentFrame < animation->frameCount)
+    return;
+
+  if (animation->looping)
+  {
+    animation->currentFrame = 0;
+    return;
+  }
+
+  animation->currentFrame = 0;
+  animation->playing = 0;
+}
+
+static EnemyController *enemy_controller_from_sprite(Sprite *sprite)
+{
+  if (!sprite)
+    return NULL;
+  if (sprite->auxTextureId < 0 || sprite->auxTextureId >= NUM_SPRITES)
+    return NULL;
+  EnemyController *controller = &g_enemyControllers[sprite->auxTextureId];
+  if (!controller->inUse || controller->sprite != sprite)
+    return NULL;
+  return controller;
+}
+
+static void enemy_set_animation(Sprite *sprite, EnemyController *controller,
+                                Animation *anim, bool restart)
+{
+  if (!sprite || !controller || !anim)
+    return;
+  if (restart)
+  {
+    anim->currentFrame = 0;
+    anim->timeAccumulator = 0.0;
+  }
+  anim->playing = 1;
+  controller->current = anim;
+  sprite->appearance = spriteAppearanceFromAnimation(anim);
+}
+
+static void enemy_change_state(Sprite *sprite, EnemyController *controller,
+                               EnemyState state, bool restart)
+{
+  if (!controller || controller->state == ENEMY_STATE_DEAD)
+    return;
+
+  controller->state = state;
+  controller->attackDamageApplied = false;
+
+  switch (state)
+  {
+  case ENEMY_STATE_CHASE:
+    controller->attack.playing = 0;
+    controller->hit.playing = 0;
+    controller->death.playing = 0;
+    controller->walk.looping = 1;
+    enemy_set_animation(sprite, controller, &controller->walk, restart);
+    break;
+  case ENEMY_STATE_ATTACK:
+    controller->walk.playing = 0;
+    controller->hit.playing = 0;
+    controller->death.playing = 0;
+    controller->attack.looping = 0;
+    enemy_set_animation(sprite, controller, &controller->attack, true);
+    break;
+  case ENEMY_STATE_HIT:
+    controller->walk.playing = 0;
+    controller->attack.playing = 0;
+    controller->death.playing = 0;
+    controller->hit.looping = 0;
+    enemy_set_animation(sprite, controller, &controller->hit, true);
+    break;
+  case ENEMY_STATE_DYING:
+    controller->walk.playing = 0;
+    controller->attack.playing = 0;
+    controller->hit.playing = 0;
+    controller->death.looping = 0;
+    enemy_set_animation(sprite, controller, &controller->death, true);
+    break;
+  case ENEMY_STATE_DEAD:
+    controller->walk.playing = 0;
+    controller->attack.playing = 0;
+    controller->hit.playing = 0;
+    controller->death.playing = 0;
+    controller->current = NULL;
+    break;
+  }
+}
+
+static void enemy_begin_attack(Sprite *sprite, EnemyController *controller)
+{
+  if (!controller || controller->state == ENEMY_STATE_DYING)
+    return;
+  controller->attackDamageApplied = false;
+  enemy_change_state(sprite, controller, ENEMY_STATE_ATTACK, true);
+}
+
+static void enemy_begin_hit(Sprite *sprite, EnemyController *controller)
+{
+  if (!controller || controller->state == ENEMY_STATE_DYING)
+    return;
+  enemy_change_state(sprite, controller, ENEMY_STATE_HIT, true);
+}
+
+static void enemy_begin_death(Engine *engine, Sprite *sprite,
+                              EnemyController *controller)
+{
+  if (!controller || controller->state == ENEMY_STATE_DYING ||
+      controller->state == ENEMY_STATE_DEAD)
+    return;
+  enemy_change_state(sprite, controller, ENEMY_STATE_DYING, true);
+  if (engine && controller->type == ENEMY_TYPE_DEMON)
+    playDemonDeath(&engine->sound);
+}
+
+static void enemy_finalize_death(Sprite *sprite, EnemyController *controller)
+{
+  if (!controller)
+    return;
+  enemy_change_state(sprite, controller, ENEMY_STATE_DEAD, false);
+  if (sprite)
+    sprite->active = 0;
+  if (controller->sprite)
+    controller->sprite->auxTextureId = -1;
+  controller->sprite = NULL;
+  controller->inUse = false;
+}
+
+void enemies_clearControllers(void)
+{
+  for (int i = 0; i < NUM_SPRITES; ++i)
+  {
+    EnemyController *controller = &g_enemyControllers[i];
+    if (controller->sprite)
+      controller->sprite->auxTextureId = -1;
+    memset(controller, 0, sizeof(EnemyController));
+  }
+}
+
+void enemies_registerSprite(Sprite *sprite, const char *animationName)
+{
+  if (!sprite)
+    return;
+
+  EnemyType type = ENEMY_TYPE_NONE;
+  if (animationName && strcmp(animationName, "DEMON_WALK") == 0)
+    type = ENEMY_TYPE_DEMON;
+
+  if (type == ENEMY_TYPE_NONE)
+  {
+    fprintf(stderr, "\033[33m[WARN] Unknown enemy animation '%s'\033[0m\n",
+            animationName ? animationName : "(null)");
+    return;
+  }
+
+  if (type == ENEMY_TYPE_DEMON && !animations.demon_walk.frames)
+    loadAllAnimations();
+
+  for (int i = 0; i < NUM_SPRITES; ++i)
+  {
+    EnemyController *controller = &g_enemyControllers[i];
+    if (controller->inUse)
+      continue;
+
+    memset(controller, 0, sizeof(EnemyController));
+    controller->inUse = true;
+    controller->sprite = sprite;
+    controller->type = type;
+    sprite->auxTextureId = i;
+
+    if (type == ENEMY_TYPE_DEMON)
+    {
+      controller->walk =
+          animation_clone_template(&animations.demon_walk, 1, 1);
+      controller->attack =
+          animation_clone_template(&animations.demon_attack, 0, 0);
+      controller->hit = animation_clone_template(&animations.demon_hit, 0, 0);
+      controller->death =
+          animation_clone_template(&animations.demon_death, 0, 0);
+    }
+
+    controller->current = &controller->walk;
+    controller->state = ENEMY_STATE_CHASE;
+    controller->attackCooldown = 0.0;
+    controller->attackDamageApplied = false;
+    enemy_set_animation(sprite, controller, controller->current, true);
+    return;
+  }
+
+  fprintf(stderr, "\033[31m[ERROR] No free enemy controller slots available\033[0m\n");
+}
 
 typedef struct
 {
@@ -224,6 +482,103 @@ static void enemy_update_path_follow(Engine *engine, Sprite *enemy,
   enemy_move_towards(enemy, targetWorldX, targetWorldY, deltaTime);
 }
 
+static void enemy_update_controller(Engine *engine, Sprite *sprite,
+                                    EnemyController *controller,
+                                    double deltaTime)
+{
+  if (!engine || !sprite || !controller)
+    return;
+
+  if (controller->state != ENEMY_STATE_DYING && sprite->health <= 0)
+    enemy_begin_death(engine, sprite, controller);
+
+  if (controller->state == ENEMY_STATE_DEAD)
+    return;
+
+  if (controller->attackCooldown > 0.0)
+  {
+    controller->attackCooldown -= deltaTime;
+    if (controller->attackCooldown < 0.0)
+      controller->attackCooldown = 0.0;
+  }
+
+  double dx = engine->player.posX - sprite->x;
+  double dy = engine->player.posY - sprite->y;
+  double distanceToPlayer = sqrt(dx * dx + dy * dy);
+
+  switch (controller->state)
+  {
+  case ENEMY_STATE_CHASE:
+    animation_update_instance(&controller->walk, deltaTime);
+    if (sprite->health > 0)
+      enemy_update_path_follow(engine, sprite, deltaTime);
+    if (sprite->health > 0 && distanceToPlayer <= ENEMY_ATTACK_RANGE &&
+        controller->attackCooldown <= 0.0)
+    {
+      enemy_begin_attack(sprite, controller);
+      return;
+    }
+    break;
+  case ENEMY_STATE_ATTACK:
+    animation_update_instance(&controller->attack, deltaTime);
+    if (!controller->attackDamageApplied &&
+        controller->attack.frameCount > 0 &&
+        controller->attack.currentFrame >= controller->attack.frameCount / 2)
+    {
+      if (distanceToPlayer <= ENEMY_ATTACK_RANGE)
+      {
+        int prevHealth = engine->player.health;
+        engine->player.health -= ENEMY_ATTACK_DAMAGE;
+        if (engine->player.health < 0)
+          engine->player.health = 0;
+        engine->player.damageFlashTimer = PLAYER_DAMAGE_FLASH_DURATION;
+        if (engine->player.health <= 0)
+        {
+          if (prevHealth > 0)
+            playPlayerDeath(&engine->sound);
+          engine->player.mouseHeld = 0;
+          engine->player.shooting = 0;
+          engine->player.velocityForward = 0.0;
+          engine->player.velocityStrafe = 0.0;
+          engine->player.velX = 0.0;
+          engine->player.velY = 0.0;
+        }
+        else if (engine->player.health < prevHealth)
+        {
+          playPlayerHit(&engine->sound);
+        }
+      }
+      controller->attackDamageApplied = true;
+    }
+    if (!controller->attack.playing)
+    {
+      controller->attackCooldown = ENEMY_ATTACK_COOLDOWN;
+      enemy_change_state(sprite, controller, ENEMY_STATE_CHASE, true);
+    }
+    break;
+  case ENEMY_STATE_HIT:
+    animation_update_instance(&controller->hit, deltaTime);
+    if (!controller->hit.playing)
+    {
+      if (sprite->health <= 0)
+        enemy_begin_death(engine, sprite, controller);
+      else
+        enemy_change_state(sprite, controller, ENEMY_STATE_CHASE, true);
+    }
+    break;
+  case ENEMY_STATE_DYING:
+    animation_update_instance(&controller->death, deltaTime);
+    if (!controller->death.playing)
+      enemy_finalize_death(sprite, controller);
+    break;
+  case ENEMY_STATE_DEAD:
+    break;
+  }
+
+  if (controller->current)
+    sprite->appearance.anim.animation = controller->current;
+}
+
 static f64 hitscan_distance_to_wall(const Engine *engine, f64 dirX, f64 dirY)
 {
   if (!engine)
@@ -328,10 +683,17 @@ void enemies_update(Engine *engine, double deltaTime)
   for (int i = 0; i < NUM_SPRITES; ++i)
   {
     Sprite *sprite = &engine->sprites[i];
-    if (!sprite->active || sprite->kind != SPRITE_ENEMY || sprite->health <= 0)
+    if (sprite->kind != SPRITE_ENEMY)
       continue;
 
-    enemy_update_path_follow(engine, sprite, deltaTime);
+    EnemyController *controller = enemy_controller_from_sprite(sprite);
+    if (!controller)
+      continue;
+
+    if (!sprite->active && controller->state != ENEMY_STATE_DYING)
+      continue;
+
+    enemy_update_controller(engine, sprite, controller, deltaTime);
   }
 }
 
@@ -351,10 +713,32 @@ void enemies_applyHitscanDamage(Engine *engine, i32 damage)
   if (!target)
     return;
 
+  EnemyController *controller = enemy_controller_from_sprite(target);
+  if (!controller)
+  {
+    target->health -= damage;
+    if (target->health <= 0)
+    {
+      target->health = 0;
+      target->active = 0;
+    }
+    return;
+  }
+
+  if (controller->state == ENEMY_STATE_DYING ||
+      controller->state == ENEMY_STATE_DEAD)
+    return;
+
   target->health -= damage;
   if (target->health <= 0)
   {
     target->health = 0;
-    target->active = 0;
+    enemy_begin_death(engine, target, controller);
+  }
+  else
+  {
+    enemy_begin_hit(target, controller);
+    if (controller->attackCooldown < 0.2)
+      controller->attackCooldown = 0.2;
   }
 }

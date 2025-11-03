@@ -14,6 +14,14 @@ typedef struct {
   Mix_Chunk *HandsPunsh;
   Mix_Chunk *SingleShot;
   Mix_Chunk *MinigunShot;
+  Mix_Chunk *PlayerHit;
+  Mix_Chunk *PlayerDeath;
+  Mix_Chunk *PlayerHeal;
+  Mix_Chunk *PlayerAmmo;
+  Mix_Chunk *PlayerKey;
+  Mix_Chunk *DemonDeath;
+  Mix_Chunk *DoorOpen;
+  Mix_Chunk *DoorClose;
   Mix_Music *Soundtrack_intense;
 } SoundManager;
 
@@ -31,6 +39,14 @@ void playHandsPunsh(SoundManager *soundManager);
 void playSingleShot(SoundManager *soundManager);
 void playMinigunShot(SoundManager *soundManager);
 void playTrackIntense(SoundManager *soundManager);
+void playPlayerHit(SoundManager *soundManager);
+void playPlayerDeath(SoundManager *soundManager);
+void playPlayerHeal(SoundManager *soundManager);
+void playPlayerAmmo(SoundManager *soundManager);
+void playPlayerKey(SoundManager *soundManager);
+void playDoorOpen(SoundManager *soundManager);
+void playDoorClose(SoundManager *soundManager);
+void playDemonDeath(SoundManager *soundManager);
 
 void cleanupSound(SoundManager *soundManager);
 

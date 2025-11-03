@@ -15,11 +15,12 @@ typedef struct Sprite Sprite;
 #define PLANE_X 0.0
 #define PLANE_Y 0.88
 #define HEALTH 100
-#define MOVE_SPEED 5.0
+#define MOVE_SPEED 6.0
 #define ROT_SPEED 3.0
 #define SENS_X 0.002
 #define SENS_Y 90.0
 #define PITCH 0.0
+#define PLAYER_DAMAGE_FLASH_DURATION 0.4
 
 typedef enum {
   SHOTGUN,
@@ -34,6 +35,11 @@ typedef struct {
   double posX, posY;
   double dirX, dirY;
   double planeX, planeY;
+  double velX, velY;
+  double velocityForward;
+  double velocityStrafe;
+  double damageFlashTimer;
+  double bobTime;
   int health;
   double moveSpeed;
   double rotSpeed;
@@ -56,6 +62,8 @@ void player_move(Player *player, double deltaTime,
 void player_strafe(Player *player, double deltaTime,
                    int worldMap[MAP_HEIGHT][MAP_WIDTH], Sprite *sprites,
                    int spriteCount, int direction);
+void player_applySpawn(Player *player);
+void player_respawn(Player *player);
 
 void player_rotate(Player *player, double rotationAmount);
 double mouse_rotationAmount(double sensX, Sint16 xrel);

@@ -10,6 +10,7 @@
 #include "types.h"
 #include <ctype.h>
 #include <math.h>
+#include <stdbool.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdio.h>
@@ -101,6 +102,18 @@ static int g_leverCapacity = 0;
 static int g_leverDoorMap[MAP_WIDTH][MAP_HEIGHT];
 static int g_leverTileMap[MAP_WIDTH][MAP_HEIGHT];
 static char g_entitiesFilePath[256] = "levels/1/entities.json";
+static int g_doorKeyRequirement[MAP_WIDTH][MAP_HEIGHT];
+
+typedef struct
+{
+  int doorX;
+  int doorY;
+  int collected;
+} KeyInfo;
+
+static KeyInfo g_keyInfos[NUM_SPRITES];
+static int g_keyCount = 0;
+static int g_spriteToKeyId[NUM_SPRITES];
 
 static double g_playerSpawnX = POS_X;
 static double g_playerSpawnY = POS_Y;
@@ -127,6 +140,21 @@ void entities_setEntitiesFilePath(const char *path)
     return;
   strncpy(g_entitiesFilePath, path, sizeof(g_entitiesFilePath) - 1);
   g_entitiesFilePath[sizeof(g_entitiesFilePath) - 1] = '\0';
+}
+
+static void key_reset(void)
+{
+  g_keyCount = 0;
+  for (int i = 0; i < NUM_SPRITES; ++i)
+  {
+    g_spriteToKeyId[i] = -1;
+    g_keyInfos[i].doorX = -1;
+    g_keyInfos[i].doorY = -1;
+    g_keyInfos[i].collected = 0;
+  }
+  for (int x = 0; x < MAP_WIDTH; ++x)
+    for (int y = 0; y < MAP_HEIGHT; ++y)
+      g_doorKeyRequirement[x][y] = -1;
 }
 
 static Animation *animation_from_name(const char *name);
@@ -574,8 +602,11 @@ static Sprite *entities_pushSprite(Sprite sprite)
   if (worldSpriteCount >= NUM_SPRITES)
     return NULL;
 
-  worldSprites[worldSpriteCount] = sprite;
-  return &worldSprites[worldSpriteCount++];
+  int index = worldSpriteCount;
+  worldSprites[index] = sprite;
+  g_spriteToKeyId[index] = -1;
+  worldSpriteCount++;
+  return &worldSprites[index];
 }
 
 static void fill_unused_slots(void)
@@ -594,6 +625,7 @@ static void fill_unused_slots(void)
     worldSprites[i].targetY = -1;
     worldSprites[i].actionType = 0;
     worldSprites[i].stateFlags = 0;
+    g_spriteToKeyId[i] = -1;
   }
 }
 
@@ -603,22 +635,33 @@ static void entities_populateDefaults(void)
   entities_resetSpawnToDefaults();
   lever_clear();
   walltext_clear();
+  key_reset();
 
   static const struct
   {
     f32 x, y, scale;
     i32 textureId;
   } decorations[] = {
-      {4.5f, 3.5f, 1.0f, TEX_GREENLIGHT},  {8.5f, 4.5f, 1.0f, TEX_GREENLIGHT},
-      {15.5f, 4.5f, 1.0f, TEX_GREENLIGHT}, {18.5f, 4.5f, 1.0f, TEX_GREENLIGHT},
-      {7.5f, 8.5f, 1.0f, TEX_GREENLIGHT},  {7.5f, 16.5f, 1.0f, TEX_GREENLIGHT},
-      {16.5f, 8.5f, 1.0f, TEX_GREENLIGHT}, {16.5f, 16.5f, 1.0f, TEX_GREENLIGHT},
-      {6.5f, 5.5f, 1.0f, TEX_PILLAR},      {6.5f, 6.5f, 1.0f, TEX_PILLAR},
-      {17.5f, 5.5f, 1.0f, TEX_PILLAR},     {17.5f, 6.5f, 1.0f, TEX_PILLAR},
-      {9.5f, 9.5f, 1.0f, TEX_PILLAR},      {14.5f, 9.5f, 1.0f, TEX_PILLAR},
-      {4.5f, 18.5f, 1.0f, TEX_BARREL},     {6.5f, 18.5f, 1.0f, TEX_BARREL},
-      {9.5f, 18.5f, 1.0f, TEX_BARREL},     {14.5f, 16.5f, 1.0f, TEX_BARREL},
-      {17.5f, 16.5f, 1.0f, TEX_BARREL},    {12.5f, 20.5f, 1.0f, TEX_BARREL},
+      {4.5f, 3.5f, 1.0f, TEX_GREENLIGHT},
+      {8.5f, 4.5f, 1.0f, TEX_GREENLIGHT},
+      {15.5f, 4.5f, 1.0f, TEX_GREENLIGHT},
+      {18.5f, 4.5f, 1.0f, TEX_GREENLIGHT},
+      {7.5f, 8.5f, 1.0f, TEX_GREENLIGHT},
+      {7.5f, 16.5f, 1.0f, TEX_GREENLIGHT},
+      {16.5f, 8.5f, 1.0f, TEX_GREENLIGHT},
+      {16.5f, 16.5f, 1.0f, TEX_GREENLIGHT},
+      {6.5f, 5.5f, 1.0f, TEX_PILLAR},
+      {6.5f, 6.5f, 1.0f, TEX_PILLAR},
+      {17.5f, 5.5f, 1.0f, TEX_PILLAR},
+      {17.5f, 6.5f, 1.0f, TEX_PILLAR},
+      {9.5f, 9.5f, 1.0f, TEX_PILLAR},
+      {14.5f, 9.5f, 1.0f, TEX_PILLAR},
+      {4.5f, 18.5f, 1.0f, TEX_BARREL},
+      {6.5f, 18.5f, 1.0f, TEX_BARREL},
+      {9.5f, 18.5f, 1.0f, TEX_BARREL},
+      {14.5f, 16.5f, 1.0f, TEX_BARREL},
+      {17.5f, 16.5f, 1.0f, TEX_BARREL},
+      {12.5f, 20.5f, 1.0f, TEX_BARREL},
   };
 
   static const struct
@@ -965,6 +1008,38 @@ static int parse_pickup_object(const char *start, const char *end)
   if (!texture_from_name(textureName, &textureId))
     return -1;
 
+  int doorTileX = -1;
+  int doorTileY = -1;
+  bool doorAssigned = false;
+  if (textureId == TEX_KEY)
+  {
+    double doorXValue = 0.0;
+    double doorYValue = 0.0;
+    int doorXResult = json_get_double(start, end, "door_x", &doorXValue);
+    int doorYResult = json_get_double(start, end, "door_y", &doorYValue);
+    if ((doorXResult == 1 && doorYResult != 1) || (doorXResult != 1 && doorYResult == 1))
+    {
+      fprintf(stderr,
+              "\033[31m[ERROR] Key pickup requires both 'door_x' and 'door_y' or neither\033[0m\n");
+      return -1;
+    }
+    if (doorXResult == -1 || doorYResult == -1)
+      return -1;
+    if (doorXResult == 1 && doorYResult == 1)
+    {
+      doorTileX = (int)(doorXValue + (doorXValue >= 0.0 ? 0.5 : -0.5));
+      doorTileY = (int)(doorYValue + (doorYValue >= 0.0 ? 0.5 : -0.5));
+      if (doorTileX < 0 || doorTileX >= MAP_WIDTH || doorTileY < 0 || doorTileY >= MAP_HEIGHT)
+      {
+        fprintf(stderr,
+                "\033[31m[ERROR] Key door coordinates (%d,%d) out of bounds\033[0m\n",
+                doorTileX, doorTileY);
+        return -1;
+      }
+      doorAssigned = true;
+    }
+  }
+
   if (scaleResult == 0)
   {
     switch (textureId)
@@ -986,11 +1061,43 @@ static int parse_pickup_object(const char *start, const char *end)
   Sprite sprite = sprite_make(x, y, SPRITE_PICKUP,
                               spriteAppearanceFromTexture(textureId),
                               (f32)scale, 0);
-  if (!entities_pushSprite(sprite))
+  Sprite *slot = entities_pushSprite(sprite);
+  if (!slot)
   {
     fprintf(stderr,
             "\033[31m[ERROR] Too many sprites, pickup skipped\033[0m\n");
+    if (textureId == TEX_KEY && doorAssigned &&
+        doorTileX >= 0 && doorTileX < MAP_WIDTH &&
+        doorTileY >= 0 && doorTileY < MAP_HEIGHT)
+    {
+      g_doorKeyRequirement[doorTileX][doorTileY] = -1;
+    }
     return -1;
+  }
+
+  if (textureId == TEX_KEY && doorAssigned)
+  {
+    if (g_keyCount >= NUM_SPRITES)
+    {
+      fprintf(stderr,
+              "\033[31m[ERROR] Too many keys defined; skipping key-door assignment\033[0m\n");
+    }
+    else
+    {
+      int spriteIndex = (int)(slot - worldSprites);
+      int keyId = g_keyCount++;
+      g_keyInfos[keyId].doorX = doorTileX;
+      g_keyInfos[keyId].doorY = doorTileY;
+      g_keyInfos[keyId].collected = 0;
+      g_spriteToKeyId[spriteIndex] = keyId;
+      if (g_doorKeyRequirement[doorTileX][doorTileY] >= 0)
+      {
+        fprintf(stderr,
+                "\033[33m[WARN] Door (%d,%d) already assigned to a key; overriding\033[0m\n",
+                doorTileX, doorTileY);
+      }
+      g_doorKeyRequirement[doorTileX][doorTileY] = keyId;
+    }
   }
 
   return 0;
@@ -1375,23 +1482,42 @@ void entities_tryInteract(Engine *engine)
         }
       }
 
-      int newValue =
-          lever->activated ? lever->openTileValue : lever->originalTileValue;
-      int previousValue = worldMap[lever->doorX][lever->doorY];
-      worldMap[lever->doorX][lever->doorY] = newValue;
-      if (previousValue != newValue && lever->targetLevelIndex < 0)
+      int requiredKey = -1;
+      if (lever->doorX >= 0 && lever->doorX < MAP_WIDTH &&
+          lever->doorY >= 0 && lever->doorY < MAP_HEIGHT)
+        requiredKey = g_doorKeyRequirement[lever->doorX][lever->doorY];
+
+      if (lever->activated && requiredKey >= 0)
       {
-        if (lever->activated)
-          playDoorOpen(&engine->sound);
-        else
-          playDoorClose(&engine->sound);
+        bool hasKey = (requiredKey < g_keyCount) && g_keyInfos[requiredKey].collected;
+        if (!hasKey)
+        {
+          lever->activated = 0;
+          printf("\033[33m[INFO] Door is locked. Find the key.\033[0m\n");
+        }
+      }
+
+      if (lever->targetLevelIndex < 0)
+      {
+        int newValue =
+            lever->activated ? lever->openTileValue : lever->originalTileValue;
+        int previousValue = worldMap[lever->doorX][lever->doorY];
+        worldMap[lever->doorX][lever->doorY] = newValue;
+        if (previousValue != newValue)
+        {
+          if (lever->activated)
+            playDoorOpen(&engine->sound);
+          else
+            playDoorClose(&engine->sound);
+        }
       }
     }
 
     if (lever->activated && lever->targetLevelIndex >= 0)
     {
-      if (engine_loadLevel(engine, lever->targetLevelIndex, false) == 0)
-        return;
+      if (!engine_isTransitionActive(engine))
+        engine_startLevelTransition(engine, lever->targetLevelIndex, false);
+      return;
     }
   }
 }
@@ -1574,7 +1700,7 @@ void entities_handlePickups(Engine *engine)
 
     double dx = sprite->x - player->posX;
     double dy = sprite->y - player->posY;
-    const double pickupRadiusBase = 0.55 * 1.25;
+    const double pickupRadiusBase = 3.0;
     double radius = pickupRadiusBase * (double)sprite->scale;
     if (dx * dx + dy * dy > radius * radius)
       continue;
@@ -1603,9 +1729,21 @@ void entities_handlePickups(Engine *engine)
       printf("\033[32m[PICKUP] Health restored to maximum.\033[0m\n");
       break;
     case TEX_KEY:
+    {
+      int spriteIndex = (int)(sprite - worldSprites);
+      if (spriteIndex >= 0 && spriteIndex < NUM_SPRITES)
+      {
+        int keyId = g_spriteToKeyId[spriteIndex];
+        if (keyId >= 0 && keyId < g_keyCount)
+          g_keyInfos[keyId].collected = 1;
+        g_spriteToKeyId[spriteIndex] = -1;
+      }
       playPlayerKey(&engine->sound);
-      printf("\033[36m[PICKUP] You found a key. Key logic coming soon!\033[0m\n");
+      printf("\033[36m[PICKUP] You found a key.\033[0m\n");
+      engine->keyPickupTimer = 3.5;
+      engine->keyPickupOpacity = 1.0;
       break;
+    }
     case TEX_MONEY:
       printf("\033[32m[PICKUP] Collected treasure.\033[0m\n");
       break;
@@ -1666,6 +1804,7 @@ void entities_reset(void)
   worldSpriteCount = 0;
   lever_clear();
   walltext_clear();
+  key_reset();
   enemies_clearControllers();
   entities_resetSpawnToDefaults();
 }

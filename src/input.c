@@ -12,6 +12,7 @@ int handleInput(Engine *engine, double deltaTime) {
   SDL_Event event;
   engine->player.velX = 0.0;
   engine->player.velY = 0.0;
+  bool allowGameplayInput = !engine_isTransitionActive(engine);
 
   while (SDL_PollEvent(&event)) {
 
@@ -76,7 +77,7 @@ int handleInput(Engine *engine, double deltaTime) {
         return 1;
       }
 
-      if (engine->player.health <= 0)
+      if (engine->player.health <= 0 || !allowGameplayInput)
         continue;
 
       if (sc == SDL_SCANCODE_E) {
@@ -113,7 +114,7 @@ int handleInput(Engine *engine, double deltaTime) {
 
     /* MOUSE EVENTS */
     if (event.type == SDL_MOUSEWHEEL && !engine->player.shooting) {
-      if (engine->player.health <= 0)
+      if (engine->player.health <= 0 || !allowGameplayInput)
         continue;
       if (event.wheel.y > 0) {
         // Scroll up -> next gun
@@ -128,7 +129,7 @@ int handleInput(Engine *engine, double deltaTime) {
     }
 
     if (event.type == SDL_MOUSEMOTION) {
-      if (engine->player.health <= 0)
+      if (engine->player.health <= 0 || !allowGameplayInput)
         continue;
       // Horizontal rotation
       player_rotate(&engine->player, mouse_rotationAmount(engine->player.sensX,
@@ -146,7 +147,7 @@ int handleInput(Engine *engine, double deltaTime) {
     }
 
   if (event.type == SDL_MOUSEBUTTONDOWN) {
-      if (engine->player.health <= 0)
+      if (engine->player.health <= 0 || !allowGameplayInput)
         continue;
       if (event.button.button == MSB_LEFT) {
         engine->player.mouseHeld = 1;
@@ -219,7 +220,10 @@ int handleInput(Engine *engine, double deltaTime) {
     }
   }
 
-  if (engine->player.health > 0 && engine->player.mouseHeld &&
+  if (!allowGameplayInput)
+    engine->player.mouseHeld = 0;
+
+  if (allowGameplayInput && engine->player.health > 0 && engine->player.mouseHeld &&
       weaponProperties[engine->player.selectedGun].ammunition > 0) {
     WeaponProperties *weapon = &weaponProperties[engine->player.selectedGun];
     if (weapon->automatic) {
@@ -252,18 +256,18 @@ int handleInput(Engine *engine, double deltaTime) {
   int spriteCount = entities_getSpriteCount();
 
   int moveDir = 0;
-  if (state[SDL_SCANCODE_W] || state[SDL_SCANCODE_UP])
+  if (allowGameplayInput && (state[SDL_SCANCODE_W] || state[SDL_SCANCODE_UP]))
     moveDir += 1;
-  if (state[SDL_SCANCODE_S] || state[SDL_SCANCODE_DOWN])
+  if (allowGameplayInput && (state[SDL_SCANCODE_S] || state[SDL_SCANCODE_DOWN]))
     moveDir -= 1;
 
   int strafeDir = 0;
-  if (state[SDL_SCANCODE_D])
+  if (allowGameplayInput && state[SDL_SCANCODE_D])
     strafeDir += 1;
-  if (state[SDL_SCANCODE_A])
+  if (allowGameplayInput && state[SDL_SCANCODE_A])
     strafeDir -= 1;
 
-  if (engine->player.health > 0) {
+  if (engine->player.health > 0 && allowGameplayInput) {
     player_move(&engine->player, deltaTime, worldMap, sprites, spriteCount, moveDir);
     player_strafe(&engine->player, deltaTime, worldMap, sprites, spriteCount, strafeDir);
   } else {
@@ -275,10 +279,10 @@ int handleInput(Engine *engine, double deltaTime) {
   }
 
   // Rotation with keys
-  if (state[SDL_SCANCODE_LEFT])
+  if (allowGameplayInput && state[SDL_SCANCODE_LEFT])
     player_rotate(&engine->player,
                   key_rotationAmount(engine->player.rotSpeed, deltaTime, 1));
-  if (state[SDL_SCANCODE_RIGHT])
+  if (allowGameplayInput && state[SDL_SCANCODE_RIGHT])
     player_rotate(&engine->player,
                   key_rotationAmount(engine->player.rotSpeed, deltaTime, -1));
 

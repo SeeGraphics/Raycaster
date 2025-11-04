@@ -448,7 +448,9 @@
       "texture": "KEY",
       "x": 3.500,
       "y": 19.500,
-      "scale": 0.250
+      "scale": 0.180,
+      "door_x": 7,
+      "door_y": 20
     }
   ],
   "decals": [

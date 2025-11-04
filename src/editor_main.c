@@ -175,6 +175,8 @@ typedef struct EditorPickup
   float x, y;
   float scale;
   int typeIndex;
+  int doorX;
+  int doorY;
 } EditorPickup;
 
 typedef struct EditorDecal
@@ -278,6 +280,7 @@ static f32 g_playerSpawnDirDegrees = 90.0f;
 static const v2f g_defaultPlayerSpawnPos = {1.5f, 1.5f};
 static const f32 g_defaultPlayerSpawnDirDegrees = 90.0f;
 static int g_pendingDoorAssignmentIndex = -1;
+static int g_pendingKeyDoorAssignmentIndex = -1;
 
 static EditorDecoration *g_decorations = NULL;
 static int g_decorationCount = 0;
@@ -644,6 +647,7 @@ static void editor_clearPickups(void)
 {
   g_pickupCount = 0;
   g_selectedPickupIndex = -1;
+  g_pendingKeyDoorAssignmentIndex = -1;
 }
 
 static void editor_clearDecals(void)
@@ -939,13 +943,25 @@ static EditorPickup *editor_addPickup(float x, float y, int typeIndex)
     return NULL;
   }
   EditorPickup pickup;
+  memset(&pickup, 0, sizeof(pickup));
   pickup.x = x;
   pickup.y = y;
   pickup.scale = g_pickupTypes[typeIndex].defaultScale;
   pickup.typeIndex = typeIndex;
+  pickup.doorX = -1;
+  pickup.doorY = -1;
   EditorPickup *result = editor_pushPickup(&pickup);
   if (result)
+  {
     g_entitiesDirty = true;
+    const PickupType *type = &g_pickupTypes[typeIndex];
+    if (strcmp(type->jsonName, "KEY") == 0)
+    {
+      g_pendingKeyDoorAssignmentIndex = g_pickupCount - 1;
+      g_pendingDoorAssignmentIndex = -1;
+      editor_setStatus("Click a wall tile to assign this key's door.");
+    }
+  }
   return result;
 }
 
@@ -1053,6 +1069,10 @@ static void editor_removePickupAtIndex(int index)
   g_pickupCount--;
   if (g_selectedPickupIndex >= g_pickupCount)
     g_selectedPickupIndex = g_pickupCount - 1;
+  if (g_pendingKeyDoorAssignmentIndex == index)
+    g_pendingKeyDoorAssignmentIndex = -1;
+  else if (g_pendingKeyDoorAssignmentIndex > index)
+    g_pendingKeyDoorAssignmentIndex--;
   g_entitiesDirty = true;
 }
 
@@ -1657,6 +1677,7 @@ static int editor_loadEntities(void)
       }
 
       EditorPickup pickup;
+      memset(&pickup, 0, sizeof(pickup));
       pickup.x = (float)valueX;
       pickup.y = (float)valueY;
       pickup.typeIndex = typeIndex;
@@ -1664,6 +1685,25 @@ static int editor_loadEntities(void)
         pickup.scale = (float)valueScale;
       else
         pickup.scale = g_pickupTypes[typeIndex].defaultScale;
+      pickup.doorX = -1;
+      pickup.doorY = -1;
+
+      if (strcmp(g_pickupTypes[typeIndex].jsonName, "KEY") == 0)
+      {
+        double doorXValue = 0.0;
+        double doorYValue = 0.0;
+        if (editor_jsonGetDouble(objStart, objEnd, "door_x", &doorXValue) == 1 &&
+            editor_jsonGetDouble(objStart, objEnd, "door_y", &doorYValue) == 1)
+        {
+          int doorTileX = (int)(doorXValue + (doorXValue >= 0.0 ? 0.5 : -0.5));
+          int doorTileY = (int)(doorYValue + (doorYValue >= 0.0 ? 0.5 : -0.5));
+          if (doorTileX >= 0 && doorTileX < MAP_WIDTH && doorTileY >= 0 && doorTileY < MAP_HEIGHT)
+          {
+            pickup.doorX = doorTileX;
+            pickup.doorY = doorTileY;
+          }
+        }
+      }
 
       editor_pushPickup(&pickup);
       cursor = objEnd + 1;
@@ -2078,7 +2118,11 @@ static void editor_saveEntities(void)
     fprintf(file, "      \"texture\": \"%s\",\n", type->jsonName);
     fprintf(file, "      \"x\": %.3f,\n", pickup->x);
     fprintf(file, "      \"y\": %.3f,\n", pickup->y);
-    fprintf(file, "      \"scale\": %.3f\n", pickup->scale);
+    fprintf(file, "      \"scale\": %.3f", pickup->scale);
+    if (strcmp(type->jsonName, "KEY") == 0 && pickup->doorX >= 0 && pickup->doorY >= 0)
+      fprintf(file, ",\n      \"door_x\": %d,\n      \"door_y\": %d\n", pickup->doorX, pickup->doorY);
+    else
+      fprintf(file, "\n");
     fprintf(file, "    }%s\n", (i + 1 < g_pickupCount) ? "," : "");
   }
 
@@ -3061,9 +3105,16 @@ int main(int argc, char **argv)
           {
             igPushID_Int(i);
             const PickupType *type = &g_pickupTypes[g_pickups[i].typeIndex];
-            char label[128];
-            snprintf(label, sizeof(label), "%s (%.1f, %.1f)##pickup_%d", type->label,
-                     g_pickups[i].x, g_pickups[i].y, i);
+            char doorSuffix[64] = "";
+            if (strcmp(type->jsonName, "KEY") == 0 &&
+                g_pickups[i].doorX >= 0 && g_pickups[i].doorY >= 0)
+            {
+              snprintf(doorSuffix, sizeof(doorSuffix), " -> door %d,%d",
+                       g_pickups[i].doorX, g_pickups[i].doorY);
+            }
+            char label[160];
+            snprintf(label, sizeof(label), "%s (%.1f, %.1f)%s##pickup_%d",
+                     type->label, g_pickups[i].x, g_pickups[i].y, doorSuffix, i);
             bool selected = (i == g_selectedPickupIndex);
             if (igSelectable_Bool(label, selected, 0, (ImVec2){0.0f, 0.0f}))
               g_selectedPickupIndex = i;
@@ -3085,8 +3136,26 @@ int main(int argc, char **argv)
                 if (igSelectable_Bool(g_pickupTypes[i].label, selected, 0,
                                       (ImVec2){0.0f, 0.0f}))
                 {
+                  const char *oldJson = g_pickupTypes[pickup->typeIndex].jsonName;
                   pickup->typeIndex = i;
                   g_entitiesDirty = true;
+                  type = &g_pickupTypes[pickup->typeIndex];
+                  if (strcmp(type->jsonName, "KEY") != 0)
+                  {
+                    if (strcmp(oldJson, "KEY") == 0)
+                    {
+                      pickup->doorX = -1;
+                      pickup->doorY = -1;
+                      if (g_pendingKeyDoorAssignmentIndex == g_selectedPickupIndex)
+                        g_pendingKeyDoorAssignmentIndex = -1;
+                    }
+                  }
+                  else if (strcmp(oldJson, "KEY") != 0)
+                  {
+                    g_pendingKeyDoorAssignmentIndex = g_selectedPickupIndex;
+                    g_pendingDoorAssignmentIndex = -1;
+                    editor_setStatus("Click a wall tile to assign this key's door.");
+                  }
                 }
                 if (selected)
                   igSetItemDefaultFocus();
@@ -3105,6 +3174,44 @@ int main(int argc, char **argv)
             {
               pickup->scale = g_pickupTypes[pickup->typeIndex].defaultScale;
               g_entitiesDirty = true;
+            }
+
+            if (strcmp(type->jsonName, "KEY") == 0)
+            {
+              int doorCoords[2] = {pickup->doorX, pickup->doorY};
+              if (igInputInt2("Door Tile##pickup", doorCoords, ImGuiInputTextFlags_None))
+              {
+                if (doorCoords[0] < 0)
+                  doorCoords[0] = -1;
+                else if (doorCoords[0] >= MAP_WIDTH)
+                  doorCoords[0] = MAP_WIDTH - 1;
+                if (doorCoords[1] < 0)
+                  doorCoords[1] = -1;
+                else if (doorCoords[1] >= MAP_HEIGHT)
+                  doorCoords[1] = MAP_HEIGHT - 1;
+                pickup->doorX = doorCoords[0];
+                pickup->doorY = doorCoords[1];
+                g_entitiesDirty = true;
+              }
+              if (igButton("Assign Door From Map##pickup", (ImVec2){0, 0}))
+              {
+                g_pendingKeyDoorAssignmentIndex = g_selectedPickupIndex;
+                g_pendingDoorAssignmentIndex = -1;
+                editor_setStatus("Click a wall tile to assign this key's door.");
+              }
+              igSameLine(0.0f, 8.0f);
+              if (igButton("Clear Door##pickup", (ImVec2){0, 0}))
+              {
+                pickup->doorX = -1;
+                pickup->doorY = -1;
+                g_entitiesDirty = true;
+              }
+              if (g_pendingKeyDoorAssignmentIndex == g_selectedPickupIndex)
+              {
+                igSameLine(0.0f, 8.0f);
+                igTextColored((ImVec4){0.8f, 0.7f, 0.2f, 1.0f},
+                              "Awaiting door selection...");
+              }
             }
             if (igButton("Delete Pickup", (ImVec2){0, 0}))
             {
@@ -3308,6 +3415,7 @@ int main(int argc, char **argv)
             if (igButton("Assign Door From Map", (ImVec2){0, 0}))
             {
               g_pendingDoorAssignmentIndex = g_selectedDecalIndex;
+              g_pendingKeyDoorAssignmentIndex = -1;
               editor_setStatus("Click a wall tile to assign lever target.");
             }
 
@@ -3656,6 +3764,51 @@ int main(int argc, char **argv)
           break;
           case EDIT_MODE_PICKUPS:
           {
+            if (g_pendingKeyDoorAssignmentIndex >= 0)
+            {
+              if (g_pendingKeyDoorAssignmentIndex >= g_pickupCount ||
+                  g_pickups[g_pendingKeyDoorAssignmentIndex].typeIndex < 0 ||
+                  strcmp(g_pickupTypes[g_pickups[g_pendingKeyDoorAssignmentIndex].typeIndex].jsonName, "KEY") != 0)
+              {
+                g_pendingKeyDoorAssignmentIndex = -1;
+              }
+              else
+              {
+                bool isWall = (tileX >= 0 && tileX < MAP_WIDTH && tileY >= 0 &&
+                               tileY < MAP_HEIGHT && g_levelTiles[tileX][tileY] > 0);
+                ImU32 outline = isWall ? EDITOR_COL32(255, 200, 80, 255)
+                                       : EDITOR_COL32(200, 60, 60, 255);
+                ImU32 fill = isWall ? EDITOR_COL32(255, 200, 80, 60)
+                                    : EDITOR_COL32(200, 60, 60, 60);
+                ImDrawList_AddRect(drawList, highlight0, highlight1, outline, 0.0f, 0,
+                                   3.0f);
+                ImDrawList_AddRectFilled(drawList, highlight0, highlight1, fill, 0.0f, 0);
+
+                if (io->MouseClicked[0])
+                {
+                  if (isWall)
+                  {
+                    EditorPickup *target = &g_pickups[g_pendingKeyDoorAssignmentIndex];
+                    target->doorX = tileX;
+                    target->doorY = tileY;
+                    g_entitiesDirty = true;
+                    editor_setStatus("Key assigned to door (%d,%d).", tileX, tileY);
+                    g_pendingKeyDoorAssignmentIndex = -1;
+                  }
+                  else
+                  {
+                    editor_setErrorStatus(
+                        "Selected tile is not a wall; choose a solid tile.");
+                  }
+                }
+                else if (io->MouseClicked[1])
+                {
+                  g_pendingKeyDoorAssignmentIndex = -1;
+                  editor_setStatus("Key door assignment cancelled.");
+                }
+                break;
+              }
+            }
             int existing = editor_findPickupAtTile(tileX, tileY);
             if (io->MouseClicked[0])
             {
@@ -3708,10 +3861,10 @@ int main(int argc, char **argv)
             }
           }
           break;
-      case EDIT_MODE_DECALS:
-      {
-        if (g_pendingDoorAssignmentIndex >= 0)
-        {
+          case EDIT_MODE_DECALS:
+          {
+            if (g_pendingDoorAssignmentIndex >= 0)
+            {
               if (g_levelTiles[tileX][tileY] > 0)
               {
                 float doorLeft = editor_tileLeftX(tileX, tileSize, origin.x);
@@ -3785,39 +3938,39 @@ int main(int argc, char **argv)
                   g_selectedDecalIndex = -1;
               }
             }
-      }
-      break;
-      case EDIT_MODE_TEXT:
-      {
-        int existing = editor_findWallTextAtTile(tileX, tileY);
-        if (io->MouseClicked[0])
-        {
-          if (existing >= 0)
-          {
-            g_selectedWallTextIndex = existing;
           }
-          else
+          break;
+          case EDIT_MODE_TEXT:
           {
-            EditorWallText *created =
-                editor_addWallText((float)tileX + 0.5f,
-                                   (float)tileY + 0.5f);
-            if (created)
-              g_selectedWallTextIndex = g_wallTextCount - 1;
+            int existing = editor_findWallTextAtTile(tileX, tileY);
+            if (io->MouseClicked[0])
+            {
+              if (existing >= 0)
+              {
+                g_selectedWallTextIndex = existing;
+              }
+              else
+              {
+                EditorWallText *created =
+                    editor_addWallText((float)tileX + 0.5f,
+                                       (float)tileY + 0.5f);
+                if (created)
+                  g_selectedWallTextIndex = g_wallTextCount - 1;
+              }
+            }
+            if (io->MouseClicked[1] && existing >= 0)
+            {
+              editor_removeWallTextAtIndex(existing);
+              if (g_selectedWallTextIndex == existing)
+                g_selectedWallTextIndex = -1;
+            }
           }
-        }
-        if (io->MouseClicked[1] && existing >= 0)
-        {
-          editor_removeWallTextAtIndex(existing);
-          if (g_selectedWallTextIndex == existing)
-            g_selectedWallTextIndex = -1;
-        }
-      }
-      break;
-      case EDIT_MODE_SPAWN:
-      {
-        if (io->MouseClicked[0])
-        {
-          float newX = (float)tileX + 0.5f;
+          break;
+          case EDIT_MODE_SPAWN:
+          {
+            if (io->MouseClicked[0])
+            {
+              float newX = (float)tileX + 0.5f;
               float newY = (float)tileY + 0.5f;
               editor_setSpawnPosition(newX, newY);
             }

@@ -1,10 +1,5 @@
 #include "engine.h"
-#include "entities.h"
-#include "graphics.h"
 #include "input.h"
-#include "enemies.h"
-#include "raycast.h"
-#include "render.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,16 +13,16 @@ int main()
     return EXIT_FAILURE;
   }
 
-  while (true)
+  bool running = true;
+  while (running)
   {
     engine_updateTime(&engine);
-    handleInput(&engine, engine.deltaTime);
-    entities_handlePickups(&engine);
-
-    enemies_update(&engine, engine.deltaTime);
-    updateAllAnimations(&engine.player, engine.deltaTime);
-    drawScene(&engine);
-    SDL_RenderPresent(engine.game.renderer);
+    if (handleInput(&engine, engine.deltaTime))
+    {
+      running = false;
+      break;
+    }
+    engine_frame(&engine);
   }
 
   engine_cleanup(&engine, EXIT_SUCCESS);

@@ -1,4 +1,5 @@
 #include "enemies.h"
+#include "blood.h"
 #include "engine.h"
 #include "map.h"
 #include "sprites.h"
@@ -717,6 +718,9 @@ void enemies_applyHitscanDamage(Engine *engine, i32 damage)
   if (!controller)
   {
     target->health -= damage;
+    double hitDirX = target->x - engine->player.posX;
+    double hitDirY = target->y - engine->player.posY;
+    blood_spawnBurst(target->x, target->y, hitDirX, hitDirY);
     if (target->health <= 0)
     {
       target->health = 0;
@@ -730,6 +734,9 @@ void enemies_applyHitscanDamage(Engine *engine, i32 damage)
     return;
 
   target->health -= damage;
+  double hitDirX = target->x - engine->player.posX;
+  double hitDirY = target->y - engine->player.posY;
+  blood_spawnBurst(target->x, target->y, hitDirX, hitDirY);
   if (target->health <= 0)
   {
     target->health = 0;

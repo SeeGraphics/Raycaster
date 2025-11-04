@@ -8,6 +8,7 @@ build/
 # compile stuff
 *.cache
 compile_commands.json
+*.log
 
 # to-do stuff
 *.txt

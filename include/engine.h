@@ -24,6 +24,17 @@ typedef struct Engine {
   Sprite *sprites;
   Font font;
   int currentLevelIndex;
+  bool transitionActive;
+  int transitionPhase;
+  double transitionTimer;
+  double transitionRadius;
+  int transitionTargetLevel;
+  bool transitionResetPlayer;
+  bool transitionLevelLoaded;
+  double keyPickupTimer;
+  double keyPickupOpacity;
+  double levelBannerTimer;
+  double levelBannerOpacity;
 
   // Time tracking
   double time, oldTime;
@@ -35,7 +46,12 @@ typedef struct Engine {
 int engine_init(Engine *engine);
 void engine_reloadLevel(Engine *engine);
 int engine_loadLevel(Engine *engine, int levelIndex, bool resetPlayerState);
+void engine_startLevelTransition(Engine *engine, int levelIndex, bool resetPlayerState);
+void engine_updateTransition(Engine *engine, double deltaTime);
+void engine_applyTransitionOverlay(Engine *engine);
+bool engine_isTransitionActive(const Engine *engine);
 void engine_updateTime(Engine *engine);
+void engine_frame(Engine *engine);
 void engine_cleanup(Engine *engine, int exitCode);
 
 #endif

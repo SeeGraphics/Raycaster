@@ -1,3 +1,4 @@
+#include "blood.h"
 #include "engine.h"
 #include "raycast.h"
 #include "weapons.h"
@@ -167,7 +168,6 @@ static void drawWeaponLayer(Engine *engine)
   const float baseY = (float)RENDER_HEIGHT - 150.0f + offsetY;
   const float defaultLeft = center - 75.0f;
   const float minigunLeft = center - 95.0f;
-
   switch (engine->player.selectedGun)
   {
   case SHOTGUN:
@@ -190,12 +190,14 @@ static void drawWeaponLayer(Engine *engine)
     if (animations.minigun_shoot.playing)
     {
       blitAnimation(engine->game.Rbuffer, &animations.minigun_shoot,
-                    RENDER_WIDTH, RENDER_HEIGHT, minigunLeft, baseY, baseScale);
+                    RENDER_WIDTH, RENDER_HEIGHT, minigunLeft,
+                    baseY, baseScale);
     }
     else
     {
       blitAnimation(engine->game.Rbuffer, &animations.minigun_idle,
-                    RENDER_WIDTH, RENDER_HEIGHT, minigunLeft, baseY, baseScale);
+                    RENDER_WIDTH, RENDER_HEIGHT, minigunLeft,
+                    baseY, baseScale);
     }
     break;
   default:
@@ -342,28 +344,30 @@ static void hud_initAssets(void)
   g_hudAssetsLoaded = 1;
 }
 
-void drawDebugHUD(Engine *engine) {
+void drawDebugHUD(Engine *engine)
+{
   // FPS counter
   renderInt(engine->game.Rbuffer, engine->font.debug, "FPS:", engine->fps, 10,
             0, RGB_Yellow);
   // Coordinates
   renderf32Pair(engine->game.Rbuffer, engine->font.debug,
-                  "POS:", engine->player.posX, engine->player.posY, 10, 15,
-                  RGB_Yellow);
+                "POS:", engine->player.posX, engine->player.posY, 10, 15,
+                RGB_Yellow);
   // direction
   renderf32Pair(engine->game.Rbuffer, engine->font.debug,
-                  "DIR:", engine->player.dirX, engine->player.dirY, 10, 30,
-                  RGB_Yellow);
+                "DIR:", engine->player.dirX, engine->player.dirY, 10, 30,
+                RGB_Yellow);
   // pitch
   renderf32(engine->game.Rbuffer, engine->font.debug,
-              "PITCH:", engine->player.pitch, 10, 45, RGB_Yellow);
+            "PITCH:", engine->player.pitch, 10, 45, RGB_Yellow);
   // plane
   renderf32Pair(engine->game.Rbuffer, engine->font.debug,
-                  "PLANE:", engine->player.planeX, engine->player.planeY, 10,
-                  60, RGB_Yellow);
+                "PLANE:", engine->player.planeX, engine->player.planeY, 10,
+                60, RGB_Yellow);
 }
 
-void drawGameHUD(Engine *engine) {
+void drawGameHUD(Engine *engine)
+{
   hud_initAssets();
 
   u32 *buffer = engine->game.Rbuffer;
@@ -380,9 +384,61 @@ void drawGameHUD(Engine *engine) {
     hud_renderString(buffer, "00", ammoCenterX, digitsY, digitScale);
   else
     hud_renderNumber(buffer, ammunition, ammoCenterX, digitsY, digitScale);
+
+  if (engine->keyPickupOpacity > 0.001)
+  {
+    const char *msg = "You picked up a key.";
+    TTF_Font *font = engine->font.ui;
+    if (font)
+    {
+      int textW = 0;
+      int textH = 0;
+      if (TTF_SizeText(font, msg, &textW, &textH) != 0)
+      {
+        textW = 0;
+        textH = 0;
+      }
+      int x = 30;
+      int y = 10;
+      float fade = (float)engine->keyPickupOpacity;
+      if (fade < 0.0f)
+        fade = 0.0f;
+      if (fade > 1.0f)
+        fade = 1.0f;
+      SDL_Color color = {205, 145, 60, (Uint8)(fade * 255.0f)};
+      renderText(engine->game.Rbuffer, font, msg, x, y, color);
+    }
+  }
+
+  if (engine->levelBannerOpacity > 0.001)
+  {
+    char msg[64];
+    snprintf(msg, sizeof(msg), "Level %d", engine->currentLevelIndex + 1);
+    TTF_Font *font = engine->font.ui;
+    if (font)
+    {
+      int textW = 0;
+      int textH = 0;
+      if (TTF_SizeText(font, msg, &textW, &textH) != 0)
+      {
+        textW = 0;
+        textH = 0;
+      }
+      int x = RENDER_WIDTH / 2 - 60; // position text centered
+      int y = 10;
+      float fade = (float)engine->levelBannerOpacity;
+      if (fade < 0.0f)
+        fade = 0.0f;
+      if (fade > 1.0f)
+        fade = 1.0f;
+      SDL_Color color = {255, 215, 80, (Uint8)(fade * 255.0f)};
+      renderText(engine->game.Rbuffer, font, msg, x, y, color);
+    }
+  }
 }
 
-void drawDebug(Engine *engine) {
+void drawDebug(Engine *engine)
+{
   /* 1. Clear Buffer */
   clearBuffer(&engine->game);
 
@@ -390,25 +446,31 @@ void drawDebug(Engine *engine) {
   perform_floorcasting(engine);
   perform_raycasting(engine);
 
-  if (!engine->game.buffer) {
+  if (!engine->game.buffer)
+  {
     fprintf(stderr, "[ERROR] game.buffer is NULL!\n");
   }
-  if (!engine->game.Rbuffer) {
+  if (!engine->game.Rbuffer)
+  {
     fprintf(stderr, "[ERROR] game.Rbuffer is NULL!\n");
   }
-  if (!engine->game.Zbuffer) {
+  if (!engine->game.Zbuffer)
+  {
     fprintf(stderr, "[ERROR] game.Zbuffer is NULL!\n");
   }
   perform_spritecasting(engine);
+  blood_render(engine);
   drawWeaponLayer(engine);
   drawDebugHUD(engine);
   drawGameHUD(engine);
   renderDamageOverlay(engine);
   renderDeathMessage(engine);
+  engine_applyTransitionOverlay(engine);
   drawBuffer(&engine->game);
 }
 
-void drawGame(Engine *engine) {
+void drawGame(Engine *engine)
+{
 
   /* 1. Clear Buffer */
   clearBuffer(&engine->game);
@@ -417,25 +479,32 @@ void drawGame(Engine *engine) {
   perform_floorcasting(engine);
   perform_raycasting(engine);
 
-  if (!engine->game.buffer) {
+  if (!engine->game.buffer)
+  {
     fprintf(stderr, "[ERROR] game.buffer is NULL!\n");
   }
-  if (!engine->game.Rbuffer) {
+  if (!engine->game.Rbuffer)
+  {
     fprintf(stderr, "[ERROR] game.Rbuffer is NULL!\n");
   }
-  if (!engine->game.Zbuffer) {
+  if (!engine->game.Zbuffer)
+  {
     fprintf(stderr, "[ERROR] game.Zbuffer is NULL!\n");
   }
   perform_spritecasting(engine);
+  blood_render(engine);
   drawWeaponLayer(engine);
   drawGameHUD(engine);
   renderDamageOverlay(engine);
   renderDeathMessage(engine);
+  engine_applyTransitionOverlay(engine);
   drawBuffer(&engine->game);
 }
 
-void drawScene(Engine *engine) {
-  switch (engine->mode) {
+void drawScene(Engine *engine)
+{
+  switch (engine->mode)
+  {
   case GAME:
     drawGame(engine);
     break;

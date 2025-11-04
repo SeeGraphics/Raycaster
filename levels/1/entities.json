@@ -12,7 +12,10 @@
       "texture": "GREENLIGHT",
       "x": 4.500,
       "y": 21.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.650,
+      "light_g": 0.120,
+      "light_b": 0.120
     },
     {
       "type": "decoration",
@@ -33,28 +36,40 @@
       "texture": "GREENLIGHT",
       "x": 10.500,
       "y": 21.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.650,
+      "light_g": 0.120,
+      "light_b": 0.120
     },
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
       "x": 14.500,
       "y": 20.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.650,
+      "light_g": 0.120,
+      "light_b": 0.120
     },
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
       "x": 17.500,
       "y": 21.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.650,
+      "light_g": 0.120,
+      "light_b": 0.120
     },
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
       "x": 20.500,
       "y": 20.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.250,
+      "light_g": 0.950,
+      "light_b": 0.350
     },
     {
       "type": "decoration",
@@ -117,21 +132,30 @@
       "texture": "GREENLIGHT",
       "x": 16.500,
       "y": 16.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.250,
+      "light_g": 0.950,
+      "light_b": 0.350
     },
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
       "x": 17.500,
       "y": 12.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.250,
+      "light_g": 0.950,
+      "light_b": 0.350
     },
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
       "x": 16.500,
       "y": 9.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.250,
+      "light_g": 0.950,
+      "light_b": 0.350
     },
     {
       "type": "decoration",
@@ -194,35 +218,50 @@
       "texture": "GREENLIGHT",
       "x": 13.500,
       "y": 10.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.250,
+      "light_g": 0.950,
+      "light_b": 0.350
     },
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
       "x": 10.500,
       "y": 10.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.250,
+      "light_g": 0.950,
+      "light_b": 0.350
     },
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
       "x": 7.500,
       "y": 10.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.250,
+      "light_g": 0.950,
+      "light_b": 0.350
     },
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
       "x": 4.500,
       "y": 10.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.250,
+      "light_g": 0.950,
+      "light_b": 0.350
     },
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
       "x": 1.500,
       "y": 10.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.250,
+      "light_g": 0.950,
+      "light_b": 0.350
     },
     {
       "type": "decoration",
@@ -306,49 +345,70 @@
       "texture": "GREENLIGHT",
       "x": 12.500,
       "y": 15.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.250,
+      "light_g": 0.950,
+      "light_b": 0.350
     },
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
       "x": 8.500,
       "y": 15.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.250,
+      "light_g": 0.950,
+      "light_b": 0.350
     },
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
       "x": 4.500,
       "y": 15.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.250,
+      "light_g": 0.950,
+      "light_b": 0.350
     },
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
       "x": 7.500,
       "y": 5.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.250,
+      "light_g": 0.950,
+      "light_b": 0.350
     },
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
       "x": 7.500,
       "y": 2.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.250,
+      "light_g": 0.950,
+      "light_b": 0.350
     },
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
       "x": 2.500,
       "y": 2.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.250,
+      "light_g": 0.950,
+      "light_b": 0.350
     },
     {
       "type": "decoration",
       "texture": "GREENLIGHT",
       "x": 2.500,
       "y": 5.500,
-      "scale": 1.000
+      "scale": 1.000,
+      "light_r": 0.250,
+      "light_g": 0.950,
+      "light_b": 0.350
     },
     {
       "type": "decoration",
@@ -391,6 +451,16 @@
       "x": 6.500,
       "y": 1.500,
       "scale": 1.000
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 20.500,
+      "y": 12.500,
+      "scale": 1.000,
+      "light_r": 1.000,
+      "light_g": 0.000,
+      "light_b": 0.000
     }
   ],
   "pickups": [

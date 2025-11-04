@@ -3,6 +3,7 @@
 #include "enemies.h"
 #include "player.h"
 #include "raycast.h"
+#include "lights.h"
 #include "texture.h"
 #include "map.h"
 #include "engine.h"
@@ -20,6 +21,62 @@
 static Sprite worldSprites[NUM_SPRITES];
 static i32 worldSpriteCount = 0;
 static int worldInitialized = 0;
+
+static void entities_registerLightForDecoration(i32 textureId, double x,
+                                                double y, double scale,
+                                                int hasCustomColor, float colorR,
+                                                float colorG, float colorB)
+{
+  float radius = (float)(4.5 * scale);
+  if (radius < 1.0f)
+    radius = 1.0f;
+
+  float intensity = (float)(0.6f * scale);
+  if (intensity < 0.05f)
+    intensity = 0.05f;
+  if (intensity > 1.2f)
+    intensity = 1.2f;
+
+  float finalR = colorR;
+  if (finalR < 0.0f)
+    finalR = 0.0f;
+  if (finalR > 1.0f)
+    finalR = 1.0f;
+  float finalG = colorG;
+  if (finalG < 0.0f)
+    finalG = 0.0f;
+  if (finalG > 1.0f)
+    finalG = 1.0f;
+  float finalB = colorB;
+  if (finalB < 0.0f)
+    finalB = 0.0f;
+  if (finalB > 1.0f)
+    finalB = 1.0f;
+
+  if (!hasCustomColor)
+  {
+    switch (textureId)
+    {
+    case TEX_GREENLIGHT:
+      finalR = 0.25f;
+      finalG = 0.95f;
+      finalB = 0.35f;
+      hasCustomColor = 1;
+      break;
+    default:
+      hasCustomColor = 0;
+      break;
+    }
+  }
+
+  if (!hasCustomColor)
+    return;
+
+  if (finalR <= 0.0f && finalG <= 0.0f && finalB <= 0.0f)
+    return;
+
+  lights_add(x, y, radius, intensity, finalR, finalG, finalB);
+}
 
 typedef struct
 {
@@ -692,7 +749,18 @@ static void entities_populateDefaults(void)
         sprite_make(decorations[i].x, decorations[i].y, SPRITE_DECORATION,
                     spriteAppearanceFromTexture(decorations[i].textureId),
                     scale, 0);
-    entities_pushSprite(sprite);
+    Sprite *slot = entities_pushSprite(sprite);
+    if (slot)
+    {
+      int hasColor = (decorations[i].textureId == TEX_GREENLIGHT);
+      float baseR = hasColor ? 0.25f : 0.0f;
+      float baseG = hasColor ? 0.95f : 0.0f;
+      float baseB = hasColor ? 0.35f : 0.0f;
+      entities_registerLightForDecoration(decorations[i].textureId,
+                                          decorations[i].x,
+                                          decorations[i].y, scale, hasColor,
+                                          baseR, baseG, baseB);
+    }
   }
 
   for (i32 i = 0; i < (i32)(sizeof(pickups) / sizeof(pickups[0])); ++i)
@@ -959,15 +1027,28 @@ static int parse_decoration_object(const char *start, const char *end)
   if (!texture_from_name(textureName, &textureId))
     return -1;
 
+  double lightRValue = 0.0;
+  double lightGValue = 0.0;
+  double lightBValue = 0.0;
+  int lightRResult = json_get_double(start, end, "light_r", &lightRValue);
+  int lightGResult = json_get_double(start, end, "light_g", &lightGValue);
+  int lightBResult = json_get_double(start, end, "light_b", &lightBValue);
+  int hasLightColor =
+      (lightRResult == 1 && lightGResult == 1 && lightBResult == 1);
   Sprite sprite =
       sprite_make(x, y, SPRITE_DECORATION,
                   spriteAppearanceFromTexture(textureId), (f32)scale, 0);
-  if (!entities_pushSprite(sprite))
+  Sprite *slot = entities_pushSprite(sprite);
+  if (!slot)
   {
     fprintf(stderr,
             "\033[31m[ERROR] Too many sprites, decoration skipped\033[0m\n");
     return -1;
   }
+
+  entities_registerLightForDecoration(textureId, x, y, scale, hasLightColor,
+                                      (float)lightRValue, (float)lightGValue,
+                                      (float)lightBValue);
 
   return 0;
 }
@@ -1802,6 +1883,7 @@ void entities_reset(void)
 {
   worldInitialized = 0;
   worldSpriteCount = 0;
+  lights_reset();
   lever_clear();
   walltext_clear();
   key_reset();

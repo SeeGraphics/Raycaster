@@ -1,8 +1,9 @@
 #include "engine.h"
 #include "blood.h"
-#include "entities.h"
 #include "animation.h"
+#include "entities.h"
 #include "enemies.h"
+#include "lights.h"
 #include "map.h"
 #include "render.h"
 #include "sound.h"
@@ -122,6 +123,7 @@ int engine_loadLevel(Engine *engine, int levelIndex, bool resetPlayerState)
   entities_reset();
   blood_reset();
   engine->sprites = entities_createWorldSprites();
+  lights_buildMap();
   engine->keyPickupTimer = 0.0;
   engine->keyPickupOpacity = 0.0;
   engine->levelBannerTimer = 3.5;

@@ -110,7 +110,24 @@ typedef struct DecorationType
   const char *textureName;
   int textureId;
   float defaultScale;
+  bool emitsLight;
+  ImVec4 defaultLightColor;
 } DecorationType;
+
+typedef struct DecorationColorPreset
+{
+  const char *label;
+  ImVec4 color;
+} DecorationColorPreset;
+
+static const DecorationColorPreset g_decorationColorPresets[] = {
+    {"Dark Red", {0.65f, 0.12f, 0.12f, 1.0f}},
+    {"Emerald Green", {0.25f, 0.95f, 0.35f, 1.0f}},
+    {"Warm Amber", {0.95f, 0.74f, 0.20f, 1.0f}},
+    {"Cool Blue", {0.30f, 0.50f, 0.95f, 1.0f}},
+};
+static const int g_decorationColorPresetCount =
+    (int)(sizeof(g_decorationColorPresets) / sizeof(g_decorationColorPresets[0]));
 
 typedef struct PickupType
 {
@@ -130,9 +147,12 @@ typedef struct DecalType
 } DecalType;
 
 static const DecorationType g_decorationTypes[] = {
-    {"Green Light", "GREENLIGHT", "GreenLight", TEX_GREENLIGHT, 1.0f},
-    {"Pillar", "PILLAR", "Pillar", TEX_PILLAR, 1.0f},
-    {"Barrel", "BARREL", "Barrel", TEX_BARREL, 1.0f},
+    {"Green Light", "GREENLIGHT", "GreenLight", TEX_GREENLIGHT, 1.0f, true,
+     {0.25f, 0.95f, 0.35f, 1.0f}},
+    {"Pillar", "PILLAR", "Pillar", TEX_PILLAR, 1.0f, false,
+     {0.0f, 0.0f, 0.0f, 1.0f}},
+    {"Barrel", "BARREL", "Barrel", TEX_BARREL, 1.0f, false,
+     {0.0f, 0.0f, 0.0f, 1.0f}},
 };
 static const int g_decorationTypeCount =
     (int)(sizeof(g_decorationTypes) / sizeof(g_decorationTypes[0]));
@@ -168,6 +188,8 @@ typedef struct EditorDecoration
   float x, y;
   float scale;
   int typeIndex;
+  ImVec4 lightColor;
+  int colorPresetIndex;
 } EditorDecoration;
 
 typedef struct EditorPickup
@@ -266,6 +288,8 @@ static int g_selectedEnemyIndex = -1;
 static int g_selectedEnemyType = 0;
 static EditorMode g_editorMode = EDIT_MODE_WALLS;
 static int g_selectedDecorationType = 0;
+static int g_selectedDecorationColorPreset = 1;
+static ImVec4 g_selectedDecorationColor = {0.25f, 0.95f, 0.35f, 1.0f};
 static int g_selectedPickupType = 0;
 static int g_selectedDecorationIndex = -1;
 static int g_selectedPickupIndex = -1;
@@ -325,6 +349,69 @@ static int editor_clampi(int value, int minValue, int maxValue)
   if (value > maxValue)
     return maxValue;
   return value;
+}
+
+static ImVec4 editor_clampLightColor(ImVec4 color)
+{
+  color.x = editor_clampf(color.x, 0.0f, 1.0f);
+  color.y = editor_clampf(color.y, 0.0f, 1.0f);
+  color.z = editor_clampf(color.z, 0.0f, 1.0f);
+  color.w = 1.0f;
+  return color;
+}
+
+static ImVec4 editor_getDecorationPresetColor(int index)
+{
+  if (index < 0 || index >= g_decorationColorPresetCount)
+    return editor_clampLightColor(g_decorationColorPresets[0].color);
+  return editor_clampLightColor(g_decorationColorPresets[index].color);
+}
+
+static int editor_matchDecorationPreset(ImVec4 color)
+{
+  for (int i = 0; i < g_decorationColorPresetCount; ++i)
+  {
+    ImVec4 preset = g_decorationColorPresets[i].color;
+    if (fabsf(preset.x - color.x) < 0.01f &&
+        fabsf(preset.y - color.y) < 0.01f &&
+        fabsf(preset.z - color.z) < 0.01f)
+      return i;
+  }
+  return -1;
+}
+
+static void editor_syncDecorationBrushToType(const DecorationType *type)
+{
+  if (!type)
+    return;
+  if (!type->emitsLight)
+  {
+    g_selectedDecorationColorPreset = -1;
+    g_selectedDecorationColor = (ImVec4){0.0f, 0.0f, 0.0f, 1.0f};
+    return;
+  }
+  g_selectedDecorationColor = editor_clampLightColor(type->defaultLightColor);
+  g_selectedDecorationColorPreset = editor_matchDecorationPreset(g_selectedDecorationColor);
+}
+
+static void editor_setBrushColorPreset(int presetIndex)
+{
+  if (presetIndex >= 0 && presetIndex < g_decorationColorPresetCount)
+  {
+    g_selectedDecorationColorPreset = presetIndex;
+    g_selectedDecorationColor = editor_getDecorationPresetColor(presetIndex);
+  }
+  else
+  {
+    g_selectedDecorationColorPreset = -1;
+  }
+}
+
+static ImVec4 editor_getDefaultLightColorForType(const DecorationType *type)
+{
+  if (type && type->emitsLight)
+    return editor_clampLightColor(type->defaultLightColor);
+  return (ImVec4){0.0f, 0.0f, 0.0f, 1.0f};
 }
 
 static float editor_tileLeftX(int tileX, float tileSize, float originX)
@@ -922,11 +1009,27 @@ static EditorDecoration *editor_addDecoration(float x, float y, int typeIndex)
     editor_setWarningStatus("Sprite limit reached (%d).", NUM_SPRITES);
     return NULL;
   }
+  const DecorationType *type = &g_decorationTypes[typeIndex];
+
   EditorDecoration decoration;
+  memset(&decoration, 0, sizeof(decoration));
   decoration.x = x;
   decoration.y = y;
-  decoration.scale = g_decorationTypes[typeIndex].defaultScale;
+  decoration.scale = type->defaultScale;
   decoration.typeIndex = typeIndex;
+  if (type->emitsLight)
+  {
+    decoration.lightColor = editor_clampLightColor(g_selectedDecorationColor);
+    decoration.colorPresetIndex = g_selectedDecorationColorPreset;
+    if (decoration.colorPresetIndex < 0 ||
+        decoration.colorPresetIndex >= g_decorationColorPresetCount)
+      decoration.colorPresetIndex = -1;
+  }
+  else
+  {
+    decoration.lightColor = (ImVec4){0.0f, 0.0f, 0.0f, 1.0f};
+    decoration.colorPresetIndex = -1;
+  }
   EditorDecoration *result = editor_pushDecoration(&decoration);
   if (result)
     g_entitiesDirty = true;
@@ -1551,6 +1654,7 @@ static int editor_loadEntities(void)
   editor_clearWallTexts();
   g_playerSpawnPos = g_defaultPlayerSpawnPos;
   g_playerSpawnDirDegrees = g_defaultPlayerSpawnDirDegrees;
+  editor_syncDecorationBrushToType(&g_decorationTypes[g_selectedDecorationType]);
 
   int status = 0;
   bool limitWarned = false;
@@ -1609,6 +1713,7 @@ static int editor_loadEntities(void)
       }
 
       EditorDecoration decoration;
+      memset(&decoration, 0, sizeof(decoration));
       decoration.x = (float)valueX;
       decoration.y = (float)valueY;
       decoration.typeIndex = typeIndex;
@@ -1616,6 +1721,35 @@ static int editor_loadEntities(void)
         decoration.scale = (float)valueScale;
       else
         decoration.scale = g_decorationTypes[typeIndex].defaultScale;
+
+      double valueLightR = 0.0;
+      double valueLightG = 0.0;
+      double valueLightB = 0.0;
+      int lightRResult = editor_jsonGetDouble(objStart, objEnd, "light_r", &valueLightR);
+      int lightGResult = editor_jsonGetDouble(objStart, objEnd, "light_g", &valueLightG);
+      int lightBResult = editor_jsonGetDouble(objStart, objEnd, "light_b", &valueLightB);
+
+      const DecorationType *type = &g_decorationTypes[typeIndex];
+      if (type->emitsLight)
+      {
+        if (lightRResult == 1 && lightGResult == 1 && lightBResult == 1)
+        {
+          ImVec4 color = {(float)valueLightR, (float)valueLightG,
+                          (float)valueLightB, 1.0f};
+          decoration.lightColor = editor_clampLightColor(color);
+        }
+        else
+        {
+          decoration.lightColor = editor_getDefaultLightColorForType(type);
+        }
+        decoration.colorPresetIndex =
+            editor_matchDecorationPreset(decoration.lightColor);
+      }
+      else
+      {
+        decoration.lightColor = (ImVec4){0.0f, 0.0f, 0.0f, 1.0f};
+        decoration.colorPresetIndex = -1;
+      }
 
       editor_pushDecoration(&decoration);
       cursor = objEnd + 1;
@@ -2102,7 +2236,19 @@ static void editor_saveEntities(void)
     fprintf(file, "      \"texture\": \"%s\",\n", type->jsonName);
     fprintf(file, "      \"x\": %.3f,\n", decor->x);
     fprintf(file, "      \"y\": %.3f,\n", decor->y);
-    fprintf(file, "      \"scale\": %.3f\n", decor->scale);
+    fprintf(file, "      \"scale\": %.3f", decor->scale);
+    if (type->emitsLight)
+    {
+      ImVec4 color = editor_clampLightColor(decor->lightColor);
+      fprintf(file, ",\n");
+      fprintf(file, "      \"light_r\": %.3f,\n", color.x);
+      fprintf(file, "      \"light_g\": %.3f,\n", color.y);
+      fprintf(file, "      \"light_b\": %.3f\n", color.z);
+    }
+    else
+    {
+      fprintf(file, "\n");
+    }
     fprintf(file, "    }%s\n", (i + 1 < g_decorationCount) ? "," : "");
   }
 
@@ -2619,6 +2765,7 @@ int main(int argc, char **argv)
                                   (ImVec4){1, 1, 1, 1}))
                 {
                   g_selectedDecorationType = i;
+                  editor_syncDecorationBrushToType(type);
                 }
                 igEndGroup();
                 gridIndex++;
@@ -3026,6 +3173,42 @@ int main(int argc, char **argv)
       {
         const DecorationType *brush = &g_decorationTypes[g_selectedDecorationType];
         igText("Active decoration: %s", brush->label);
+        if (brush->emitsLight)
+        {
+          const char *presetName =
+              (g_selectedDecorationColorPreset >= 0 &&
+               g_selectedDecorationColorPreset < g_decorationColorPresetCount)
+                  ? g_decorationColorPresets[g_selectedDecorationColorPreset].label
+                  : "Custom";
+          if (igBeginCombo("Brush Light##decor", presetName, 0))
+          {
+            for (int p = 0; p < g_decorationColorPresetCount; ++p)
+            {
+              bool presetSelected = (g_selectedDecorationColorPreset == p);
+              if (igSelectable_Bool(g_decorationColorPresets[p].label, presetSelected,
+                                    0, (ImVec2){0.0f, 0.0f}))
+              {
+                editor_setBrushColorPreset(p);
+              }
+              if (presetSelected)
+                igSetItemDefaultFocus();
+            }
+            bool customSelected = (g_selectedDecorationColorPreset < 0);
+            if (igSelectable_Bool("Custom", customSelected, 0, (ImVec2){0.0f, 0.0f}))
+            {
+              g_selectedDecorationColorPreset = -1;
+            }
+            igEndCombo();
+          }
+          ImVec4 brushColor = g_selectedDecorationColor;
+          if (igColorEdit3("Brush Color##decor", &brushColor.x,
+                           ImGuiColorEditFlags_NoAlpha))
+          {
+            g_selectedDecorationColor = editor_clampLightColor(brushColor);
+            g_selectedDecorationColorPreset =
+                editor_matchDecorationPreset(g_selectedDecorationColor);
+          }
+        }
         if (igCollapsingHeader_TreeNodeFlags("Decorations##section", ImGuiTreeNodeFlags_DefaultOpen))
         {
           igPushID_Str("decor_section");
@@ -3061,7 +3244,22 @@ int main(int argc, char **argv)
                 if (igSelectable_Bool(g_decorationTypes[i].label, selected, 0,
                                       (ImVec2){0.0f, 0.0f}))
                 {
-                  decor->typeIndex = i;
+                  if (decor->typeIndex != i)
+                  {
+                    decor->typeIndex = i;
+                    const DecorationType *newType = &g_decorationTypes[i];
+                    if (newType->emitsLight)
+                    {
+                      decor->lightColor = editor_getDefaultLightColorForType(newType);
+                      decor->colorPresetIndex =
+                          editor_matchDecorationPreset(decor->lightColor);
+                    }
+                    else
+                    {
+                      decor->lightColor = (ImVec4){0.0f, 0.0f, 0.0f, 1.0f};
+                      decor->colorPresetIndex = -1;
+                    }
+                  }
                   g_entitiesDirty = true;
                 }
                 if (selected)
@@ -3069,6 +3267,7 @@ int main(int argc, char **argv)
               }
               igEndCombo();
             }
+            type = &g_decorationTypes[decor->typeIndex];
 
             float scale = decor->scale;
             if (igSliderFloat("Scale##decor", &scale, 0.4f, 2.5f, "%.2f", 0))
@@ -3081,6 +3280,47 @@ int main(int argc, char **argv)
             {
               decor->scale = g_decorationTypes[decor->typeIndex].defaultScale;
               g_entitiesDirty = true;
+            }
+            if (type->emitsLight)
+            {
+              const char *presetLabel =
+                  (decor->colorPresetIndex >= 0 &&
+                   decor->colorPresetIndex < g_decorationColorPresetCount)
+                      ? g_decorationColorPresets[decor->colorPresetIndex].label
+                      : "Custom";
+              if (igBeginCombo("Light Preset##decor", presetLabel, 0))
+              {
+                for (int p = 0; p < g_decorationColorPresetCount; ++p)
+                {
+                  bool presetSelected = (decor->colorPresetIndex == p);
+                  if (igSelectable_Bool(g_decorationColorPresets[p].label, presetSelected,
+                                        0, (ImVec2){0.0f, 0.0f}))
+                  {
+                    decor->colorPresetIndex = p;
+                    decor->lightColor = editor_getDecorationPresetColor(p);
+                    g_entitiesDirty = true;
+                  }
+                  if (presetSelected)
+                    igSetItemDefaultFocus();
+                }
+                bool customSelected = (decor->colorPresetIndex < 0);
+                if (igSelectable_Bool("Custom", customSelected, 0, (ImVec2){0.0f, 0.0f}))
+                {
+                  decor->colorPresetIndex = -1;
+                  g_entitiesDirty = true;
+                }
+                igEndCombo();
+              }
+
+              ImVec4 editColor = decor->lightColor;
+              if (igColorEdit3("Light Color##decor", &editColor.x,
+                               ImGuiColorEditFlags_NoAlpha))
+              {
+                decor->lightColor = editor_clampLightColor(editColor);
+                decor->colorPresetIndex =
+                    editor_matchDecorationPreset(decor->lightColor);
+                g_entitiesDirty = true;
+              }
             }
             if (igButton("Delete Decoration", (ImVec2){0, 0}))
             {

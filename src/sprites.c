@@ -1,5 +1,6 @@
 #include "sprites.h"
 #include "engine.h"
+#include "lights.h"
 #include <math.h>
 
 typedef struct
@@ -134,6 +135,13 @@ void perform_spritecasting(Engine *engine)
     if (frame.width <= 0 || frame.height <= 0)
       continue;
 
+    float spriteBrightness = 0.0f;
+    float spriteLightR = 0.0f;
+    float spriteLightG = 0.0f;
+    float spriteLightB = 0.0f;
+    lights_sampleWorld(sprite->x, sprite->y, &spriteBrightness, &spriteLightR,
+                       &spriteLightG, &spriteLightB);
+
     f64 projectedHeight = ((f64)RENDER_HEIGHT / transformY) * sprite->scale;
     i32 spriteHeight = (i32)fabs(projectedHeight);
     if (spriteHeight <= 0)
@@ -208,6 +216,8 @@ void perform_spritecasting(Engine *engine)
         if (sprite_isTransparent(sprite, color))
           continue;
 
+        color = lights_applyColor(color, spriteBrightness, spriteLightR,
+                                  spriteLightG, spriteLightB);
         engine->game.Rbuffer[y * RENDER_WIDTH + stripe] = color;
       }
     }

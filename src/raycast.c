@@ -1,7 +1,9 @@
 #include "raycast.h"
 #include "engine.h"
-#include "map.h"
 #include "entities.h"
+#include "lights.h"
+#include "map.h"
+#include <math.h>
 
 int g_floorTextureId = 3;
 int g_ceilingTextureId = 6;
@@ -113,6 +115,13 @@ void perform_raycasting(Engine *engine)
     else
       faceY = -stepY;
 
+    float tileBrightness = 0.0f;
+    float tileLightR = 0.0f;
+    float tileLightG = 0.0f;
+    float tileLightB = 0.0f;
+    lights_sampleTile(mapX, mapY, &tileBrightness, &tileLightR, &tileLightG,
+                      &tileLightB);
+
     // Draw the textured vertical line
     for (int y = drawStart; y < drawEnd; y++)
     {
@@ -222,6 +231,8 @@ void perform_raycasting(Engine *engine)
         }
       }
 
+      color = lights_applyColor(color, tileBrightness, tileLightR,
+                                tileLightG, tileLightB);
       engine->game.Rbuffer[y * RENDER_WIDTH + x] = color;
     }
     // set z-buffer for sprites
@@ -262,15 +273,26 @@ void perform_floorcasting(Engine *engine)
     for (int x = 0; x < RENDER_WIDTH; ++x)
     {
       // Get cell coordinates
-      int cellX = (int)(floorX);
-      int cellY = (int)(floorY);
+      double sampleX = floorX;
+      double sampleY = floorY;
+      int cellX = (int)(sampleX);
+      int cellY = (int)(sampleY);
 
       // Get texture coordinate from the fractional part
-      int tx = (int)(TEXT_WIDTH * (floorX - cellX)) & (TEXT_WIDTH - 1);
-      int ty = (int)(TEXT_HEIGHT * (floorY - cellY)) & (TEXT_HEIGHT - 1);
+      int tx =
+          (int)(TEXT_WIDTH * (sampleX - cellX)) & (TEXT_WIDTH - 1);
+      int ty =
+          (int)(TEXT_HEIGHT * (sampleY - cellY)) & (TEXT_HEIGHT - 1);
 
       floorX += floorStepX;
       floorY += floorStepY;
+
+      float brightness = 0.0f;
+      float lightR = 0.0f;
+      float lightG = 0.0f;
+      float lightB = 0.0f;
+      lights_sampleWorld(sampleX, sampleY, &brightness, &lightR, &lightG,
+                         &lightB);
 
       // Choose texture and draw the pixel
       int floorTexture = g_floorTextureId;
@@ -281,14 +303,14 @@ void perform_floorcasting(Engine *engine)
       {
         // Floor (below horizon)
         color = engine->textures.textures[floorTexture][TEXT_WIDTH * ty + tx];
-        color = (color >> 1) & 8355711;
+        color = lights_applyColor(color, brightness, lightR, lightG, lightB);
         engine->game.Rbuffer[y * RENDER_WIDTH + x] = color;
       }
       else
       {
         // Ceiling (above horizon)
         color = engine->textures.textures[ceilingTexture][TEXT_WIDTH * ty + tx];
-        color = (color >> 1) & 8355711;
+        color = lights_applyColor(color, brightness, lightR, lightG, lightB);
         engine->game.Rbuffer[y * RENDER_WIDTH + x] = color;
       }
     }

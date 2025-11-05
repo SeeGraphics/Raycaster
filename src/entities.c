@@ -110,29 +110,6 @@ static WallTextInstance *g_wallTexts = NULL;
 static int g_wallTextCount = 0;
 static int g_wallTextCapacity = 0;
 
-static float walltext_compute_final_height(int srcW, int srcH, int renderWidth,
-                                           int renderHeight, float maxScale,
-                                           float heightBias)
-{
-  if (srcW <= 0 || srcH <= 0)
-    return 0.0f;
-
-  float scaleX = ((float)renderWidth * maxScale) / (float)srcW;
-  float scaleY = ((float)renderHeight * maxScale) / (float)srcH;
-  float scale = (scaleX < scaleY) ? scaleX : scaleY;
-  if (scale <= 0.0f)
-    return 0.0f;
-
-  scale *= heightBias;
-  float maxScaleX = (float)renderWidth / (float)srcW;
-  float maxScaleY = (float)renderHeight / (float)srcH;
-  float maxScaleClamp = (maxScaleX < maxScaleY) ? maxScaleX : maxScaleY;
-  if (scale > maxScaleClamp)
-    scale = maxScaleClamp;
-
-  return (float)srcH * scale;
-}
-
 typedef struct
 {
   float interactX;
@@ -275,6 +252,294 @@ static void walltext_ensureCapacity(int required)
   g_wallTextCapacity = newCap;
 }
 
+typedef struct
+{
+  char **items;
+  int count;
+  int capacity;
+} WallTextLineList;
+
+static void walltext_lines_free(WallTextLineList *lines)
+{
+  if (!lines)
+    return;
+  for (int i = 0; i < lines->count; ++i)
+    free(lines->items[i]);
+  free(lines->items);
+  lines->items = NULL;
+  lines->count = 0;
+  lines->capacity = 0;
+}
+
+static int walltext_lines_push(WallTextLineList *lines, const char *text)
+{
+  if (!lines || !text)
+    return 0;
+  if (lines->count == lines->capacity)
+  {
+    int newCap = lines->capacity ? lines->capacity * 2 : 8;
+    char **newItems =
+        (char **)realloc(lines->items, (size_t)newCap * sizeof(char *));
+    if (!newItems)
+      return 0;
+    lines->items = newItems;
+    lines->capacity = newCap;
+  }
+  size_t len = strlen(text);
+  char *copy = (char *)malloc(len + 1);
+  if (!copy)
+    return 0;
+  memcpy(copy, text, len + 1);
+  lines->items[lines->count++] = copy;
+  return 1;
+}
+
+static int walltext_flush_current(WallTextLineList *lines, char **current,
+                                  size_t *currentLen)
+{
+  if (!lines || !current || !currentLen)
+    return 0;
+  if (*current && *currentLen > 0)
+  {
+    if (!walltext_lines_push(lines, *current))
+      return 0;
+    free(*current);
+    *current = NULL;
+    *currentLen = 0;
+  }
+  else
+  {
+    if (!walltext_lines_push(lines, ""))
+      return 0;
+  }
+  return 1;
+}
+
+static int walltext_build_lines(TTF_Font *font, const char *text, int maxWidth,
+                                WallTextLineList *outLines)
+{
+  if (!font || !text || !outLines)
+    return 0;
+
+  outLines->items = NULL;
+  outLines->count = 0;
+  outLines->capacity = 0;
+
+  char *current = NULL;
+  size_t currentLen = 0;
+
+  const char *p = text;
+  while (*p)
+  {
+    if (*p == '\r')
+    {
+      ++p;
+      continue;
+    }
+
+    if (*p == '\n')
+    {
+      if (!walltext_flush_current(outLines, &current, &currentLen))
+      {
+        walltext_lines_free(outLines);
+        return 0;
+      }
+      ++p;
+      continue;
+    }
+
+    if (*p == ' ' || *p == '\t')
+    {
+      while (*p == ' ' || *p == '\t')
+        ++p;
+      continue;
+    }
+
+    const char *wordStart = p;
+    while (*p && *p != ' ' && *p != '\t' && *p != '\n' && *p != '\r')
+      ++p;
+    size_t wordLen = (size_t)(p - wordStart);
+    if (wordLen == 0)
+      continue;
+
+    size_t candidateLen = currentLen + (currentLen > 0 ? 1 : 0) + wordLen;
+    char *candidate = (char *)malloc(candidateLen + 1);
+    if (!candidate)
+    {
+      walltext_lines_free(outLines);
+      free(current);
+      return 0;
+    }
+
+    size_t pos = 0;
+    if (currentLen > 0)
+    {
+      memcpy(candidate, current, currentLen);
+      pos += currentLen;
+      candidate[pos++] = ' ';
+    }
+    memcpy(candidate + pos, wordStart, wordLen);
+    pos += wordLen;
+    candidate[pos] = '\0';
+
+    int candidateWidth = 0;
+    if (TTF_SizeUTF8(font, candidate, &candidateWidth, NULL) != 0)
+    {
+      free(candidate);
+      walltext_lines_free(outLines);
+      free(current);
+      return 0;
+    }
+
+    if (candidateWidth <= maxWidth || currentLen == 0)
+    {
+      free(current);
+      current = candidate;
+      currentLen = candidateLen;
+    }
+    else
+    {
+      if (currentLen > 0)
+      {
+        if (!walltext_lines_push(outLines, current))
+        {
+          free(candidate);
+          walltext_lines_free(outLines);
+          free(current);
+          return 0;
+        }
+        free(current);
+        current = NULL;
+        currentLen = 0;
+      }
+      free(candidate);
+
+      char *wordCopy = (char *)malloc(wordLen + 1);
+      if (!wordCopy)
+      {
+        walltext_lines_free(outLines);
+        free(current);
+        return 0;
+      }
+      memcpy(wordCopy, wordStart, wordLen);
+      wordCopy[wordLen] = '\0';
+      current = wordCopy;
+      currentLen = wordLen;
+    }
+  }
+
+  if (current && currentLen > 0)
+  {
+    if (!walltext_lines_push(outLines, current))
+    {
+      walltext_lines_free(outLines);
+      free(current);
+      return 0;
+    }
+    free(current);
+    current = NULL;
+    currentLen = 0;
+  }
+
+  if (outLines->count == 0)
+  {
+    if (!walltext_lines_push(outLines, ""))
+    {
+      walltext_lines_free(outLines);
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+static SDL_Surface *walltext_render_lines_surface(TTF_Font *font, SDL_Color color,
+                                                  const WallTextLineList *lines,
+                                                  int fontSize)
+{
+  if (!font || !lines || lines->count <= 0)
+    return NULL;
+
+  int lineCount = lines->count;
+  int *lineWidths =
+      (int *)malloc((size_t)lineCount * sizeof(int));
+  if (!lineWidths)
+    return NULL;
+
+  int maxWidth = 0;
+  for (int i = 0; i < lineCount; ++i)
+  {
+    int width = 0;
+    if (lines->items[i] && lines->items[i][0] != '\0')
+    {
+      if (TTF_SizeUTF8(font, lines->items[i], &width, NULL) != 0)
+      {
+        free(lineWidths);
+        return NULL;
+      }
+    }
+    else
+    {
+      width = 0;
+    }
+    lineWidths[i] = width;
+    if (width > maxWidth)
+      maxWidth = width;
+  }
+
+  if (maxWidth < fontSize / 2)
+    maxWidth = fontSize / 2;
+  if (maxWidth < 1)
+    maxWidth = 1;
+
+  int lineSkip = TTF_FontLineSkip(font);
+  if (lineSkip < fontSize)
+    lineSkip = fontSize;
+  int finalHeight = lineSkip * lineCount;
+  if (finalHeight < lineSkip)
+    finalHeight = lineSkip;
+
+  SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormat(
+      0, maxWidth, finalHeight, 32, SDL_PIXELFORMAT_ARGB8888);
+  if (!surface)
+  {
+    free(lineWidths);
+    return NULL;
+  }
+
+  SDL_FillRect(surface, NULL,
+               SDL_MapRGBA(surface->format, 0, 0, 0, 0));
+
+  int penY = 0;
+  for (int i = 0; i < lineCount; ++i)
+  {
+    const char *line = lines->items[i];
+    SDL_Surface *lineSurface = NULL;
+    if (line && line[0] != '\0')
+      lineSurface = TTF_RenderUTF8_Blended(font, line, color);
+
+    int lineHeight = lineSurface ? lineSurface->h : fontSize;
+    int offsetY = penY + (lineSkip - lineHeight) / 2;
+    if (offsetY < penY)
+      offsetY = penY;
+
+    if (lineSurface)
+    {
+      int offsetX = (surface->w - lineSurface->w) / 2;
+      if (offsetX < 0)
+        offsetX = 0;
+      SDL_Rect dst = {offsetX, offsetY, lineSurface->w, lineSurface->h};
+      SDL_BlitSurface(lineSurface, NULL, surface, &dst);
+      SDL_FreeSurface(lineSurface);
+    }
+
+    penY += lineSkip;
+  }
+
+  free(lineWidths);
+  return surface;
+}
+
 static u32 *walltext_render_texture(const char *text, int fontSize,
                                     SDL_Color color, float *outCoverageX,
                                     float *outCoverageY)
@@ -301,57 +566,22 @@ static u32 *walltext_render_texture(const char *text, int fontSize,
     return NULL;
   }
 
-  SDL_Surface *baseSurface = TTF_RenderUTF8_Blended(font, text, color);
-  if (!baseSurface)
+  WallTextLineList lines;
+  if (!walltext_build_lines(font, text,
+                            (int)((float)renderWidth * maxScaleFrac), &lines))
   {
-    fprintf(stderr, "\033[31m[ERROR] Failed to render wall text '%s': %s\033[0m\n",
-            text, TTF_GetError());
     TTF_CloseFont(font);
     return NULL;
   }
 
-  SDL_Surface *surface = baseSurface;
-  float bestHeight = walltext_compute_final_height(surface->w, surface->h,
-                                                   renderWidth, renderHeight,
-                                                   maxScaleFrac, heightBias);
-
-  if (strchr(text, ' ') != NULL)
+  SDL_Surface *surface =
+      walltext_render_lines_surface(font, color, &lines, fontSize);
+  walltext_lines_free(&lines);
+  if (!surface)
   {
-    int wrapWidth = surface->w;
-    for (int attempt = 0; attempt < 6; ++attempt)
-    {
-      wrapWidth = (int)((float)wrapWidth * 0.85f);
-      if (wrapWidth < fontSize)
-        wrapWidth = fontSize;
-
-      SDL_Surface *wrapped =
-          TTF_RenderUTF8_Blended_Wrapped(font, text, color, wrapWidth);
-      if (!wrapped)
-        break;
-
-      float candidateHeight = walltext_compute_final_height(
-          wrapped->w, wrapped->h, renderWidth, renderHeight, maxScaleFrac,
-          heightBias);
-
-      if (candidateHeight > bestHeight)
-      {
-        if (surface != baseSurface)
-          SDL_FreeSurface(surface);
-        surface = wrapped;
-        bestHeight = candidateHeight;
-      }
-      else
-      {
-        SDL_FreeSurface(wrapped);
-      }
-
-      if (wrapWidth == fontSize)
-        break;
-    }
+    TTF_CloseFont(font);
+    return NULL;
   }
-
-  if (surface != baseSurface)
-    SDL_FreeSurface(baseSurface);
 
   SDL_Surface *converted =
       SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_ARGB8888, 0);
@@ -497,10 +727,59 @@ static u32 *walltext_render_texture(const char *text, int fontSize,
     }
   }
 
+  float baseCoverageX = (float)destWidth / (float)renderWidth;
+  float baseCoverageY = (float)destHeight / (float)renderHeight;
+
+  int minX = TEXT_WIDTH, maxX = -1, minY = TEXT_HEIGHT, maxY = -1;
+  for (int y = 0; y < TEXT_HEIGHT; ++y)
+  {
+    for (int x = 0; x < TEXT_WIDTH; ++x)
+    {
+      u32 pix = buffer[(size_t)y * (size_t)TEXT_WIDTH + (size_t)x];
+      Uint8 alpha = (Uint8)((pix >> 24) & 0xFFu);
+      if (alpha < 8)
+        continue;
+      if (x < minX)
+        minX = x;
+      if (x > maxX)
+        maxX = x;
+      if (y < minY)
+        minY = y;
+      if (y > maxY)
+        maxY = y;
+    }
+  }
+
+  float bboxCoverageX = 0.0f;
+  float bboxCoverageY = 0.0f;
+  if (maxX >= minX && maxY >= minY)
+  {
+    bboxCoverageX = (float)(maxX - minX + 1) / (float)TEXT_WIDTH;
+    bboxCoverageY = (float)(maxY - minY + 1) / (float)TEXT_HEIGHT;
+  }
+
+  float coverageX = baseCoverageX;
+  float coverageY = baseCoverageY;
+  if (bboxCoverageX > coverageX)
+    coverageX = bboxCoverageX;
+  if (bboxCoverageY > coverageY)
+    coverageY = bboxCoverageY;
+
+  const float minCoverage = 0.38f;
+  const float maxCoverage = 0.98f;
+  if (coverageX < minCoverage)
+    coverageX = minCoverage;
+  if (coverageY < minCoverage)
+    coverageY = minCoverage;
+  if (coverageX > maxCoverage)
+    coverageX = maxCoverage;
+  if (coverageY > maxCoverage)
+    coverageY = maxCoverage;
+
   if (outCoverageX)
-    *outCoverageX = (float)destWidth / (float)renderWidth;
+    *outCoverageX = coverageX;
   if (outCoverageY)
-    *outCoverageY = (float)destHeight / (float)renderHeight;
+    *outCoverageY = coverageY;
 
   free(highBuffer);
   SDL_FreeSurface(converted);

@@ -1,11 +1,8 @@
-# Wolfenstein3D-style Software Renderer
+# Raycast Game Engine in C
 
-**Wolfenstein3D-style software Renderer using Raycasting, written in C with SDL2.**
-
+**Wolfenstein3D-style software Renderer using Raycasting, written in C from scratch with SDL2, imgui.**
 
 This is my **first attempt** at a software renderer.
-It’s a **heavy work in progress** with plenty of features to come.
-
 
 ## Build Instructions
 
@@ -20,13 +17,6 @@ On macOS you can install the basics via Homebrew:
 
 ```bash
 brew install sdl2 sdl2_image sdl2_ttf sdl2_mixer glew
-```
-
-On Ubuntu/Debian:
-
-```bash
-sudo apt install libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev \
-  libsdl2-mixer-dev libglew-dev build-essential cmake
 ```
 
 ### Building
@@ -44,8 +34,6 @@ The resulting binaries live in `build/`:
 - `build/raycast` — the game
 - `build/editor` — the level editor
 
-No additional environment variables are required; all paths are project-relative.
-
 Subscribe to [@SeeGraphics](https://www.youtube.com/@SeeGraphics) — I’ll post there once it’s finished and make some tutorials.
 
 ---
@@ -54,21 +42,9 @@ Subscribe to [@SeeGraphics](https://www.youtube.com/@SeeGraphics) — I’ll pos
 
 Here’s a quick visual overview of the project so far:
 
-![Enemies](images/Enemies.png) ![Editor](images/Editor.png)
+![Enemies](images/1.png) ![Editor](images/2.png)
 
-![Debug](images/Debug.png) ![Pitch](images/Pitchview.png)
-
----
-
-## Features (Work in Progress)
-
-- Textured Walls & floor / ceiling
-- Guns
-- Sprite rendering
-- HUD / DEBUG info
-- Upscaling for better performance (300-500fps)
-- Level Editor
-- Enemies
+![Debug](media/transition_demo.gif) ![Pitch](images/3.png)
 
 ---
 

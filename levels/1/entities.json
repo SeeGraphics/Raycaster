@@ -461,6 +461,74 @@
       "light_r": 1.000,
       "light_g": 0.000,
       "light_b": 0.000
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 20.500,
+      "y": 2.500,
+      "scale": 1.000,
+      "light_r": 0.112,
+      "light_g": 0.182,
+      "light_b": 0.912
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 20.500,
+      "y": 5.500,
+      "scale": 1.000,
+      "light_r": 0.112,
+      "light_g": 0.182,
+      "light_b": 0.912
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 14.500,
+      "y": 5.500,
+      "scale": 1.000,
+      "light_r": 0.112,
+      "light_g": 0.182,
+      "light_b": 0.912
+    },
+    {
+      "type": "decoration",
+      "texture": "GREENLIGHT",
+      "x": 13.500,
+      "y": 2.500,
+      "scale": 1.000,
+      "light_r": 0.112,
+      "light_g": 0.182,
+      "light_b": 0.912
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 22.500,
+      "y": 1.500,
+      "scale": 1.000
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 22.500,
+      "y": 7.500,
+      "scale": 1.000
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 16.500,
+      "y": 7.500,
+      "scale": 1.000
+    },
+    {
+      "type": "decoration",
+      "texture": "BARREL",
+      "x": 11.500,
+      "y": 1.500,
+      "scale": 1.000
     }
   ],
   "pickups": [
@@ -588,6 +656,14 @@
       "door_x": 14,
       "door_y": 0,
       "target_level": 2
+    },
+    {
+      "type": "LEVER",
+      "x": 17.500,
+      "y": 2.500,
+      "facing": "WEST",
+      "door_x": 17,
+      "door_y": 1
     }
   ],
   "wall_texts": [
@@ -702,6 +778,38 @@
       "animation": "DEMON_WALK",
       "x": 9.500,
       "y": 11.500,
+      "scale": 1.350,
+      "health": 100
+    },
+    {
+      "type": "enemy",
+      "animation": "DEMON_WALK",
+      "x": 14.500,
+      "y": 3.500,
+      "scale": 1.350,
+      "health": 100
+    },
+    {
+      "type": "enemy",
+      "animation": "DEMON_WALK",
+      "x": 13.500,
+      "y": 5.500,
+      "scale": 1.350,
+      "health": 100
+    },
+    {
+      "type": "enemy",
+      "animation": "DEMON_WALK",
+      "x": 8.500,
+      "y": 3.500,
+      "scale": 1.350,
+      "health": 100
+    },
+    {
+      "type": "enemy",
+      "animation": "DEMON_WALK",
+      "x": 7.500,
+      "y": 6.500,
       "scale": 1.350,
       "health": 100
     }

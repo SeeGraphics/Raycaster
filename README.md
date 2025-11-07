@@ -1,8 +1,8 @@
 # Raycast Game Engine in C
 
-**Wolfenstein3D-style software Renderer using Raycasting, written in C from scratch with SDL2, imgui.**
-
-This is my **first attempt** at a software renderer.
+This is my **first attempt** at a software renderer. It includes **lighting**, **quake-like** movement, **enemies**, **doors**, its own **Level Editor** and **more**. 
+You can make as many levels as you like, connect them via buttons that hold the level transition attribute and then play it yourself. 
+Im not sure if it runs on windows, but i'd guess so.
 
 ## Build Instructions
 
@@ -29,12 +29,7 @@ make
 make editor
 ```
 
-The resulting binaries live in `build/`:
-
-- `build/raycast` — the game
-- `build/editor` — the level editor
-
-Subscribe to [@SeeGraphics](https://www.youtube.com/@SeeGraphics) — I’ll post there once it’s finished and make some tutorials.
+Subscribe to [@SeeGraphics](https://www.youtube.com/@SeeGraphics) — I’ll post there once it’s finished.
 
 ---
 
@@ -56,6 +51,7 @@ Here’s a quick visual overview of the project so far:
 | Move Backward     | S                   |
 | Strafe Left       | A                   |
 | Strafe Right      | D                   |
+| Interact          | E                   |
 | Turn Left / Right | Mouse or Arrow Keys |
 | Fire Weapon       | Left Mouse Button   |
 | Switch Weapon     | Mouse Wheel         |
